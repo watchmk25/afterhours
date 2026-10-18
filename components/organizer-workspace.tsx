@@ -69,9 +69,7 @@ export function OrganizerWorkspace() {
             </span>
           </a>
           <nav className="workspace-nav" aria-label="Workspace sections">
-            <a className="active-nav" href="#workspace" aria-current="page">
-              Workspace
-            </a>
+            <a href="#workspace">Workspace</a>
             <a href="#eligible-books">Eligible books</a>
             <a href="#event-outline">Event outline</a>
           </nav>

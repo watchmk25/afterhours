@@ -46,7 +46,11 @@ The dependency-free Node tests exercise stock exclusion, alphabetical order, inc
 
 Browser interaction and responsive layout checks should cover: editable favourites; Load example; Reset and Reset filters; combined filters; invalid numeric inputs; deselecting all languages; no matching books; selecting/editing an outline; retaining a draft for still-eligible books; clearing it after invalidation; and mobile/keyboard use.
 
-Verified for this implementation: lint, all ten automated domain tests, and the production build pass. The production preview returned HTTP 200 and rendered the sample notice, seven default eligible books, and fixed-template label. Interactive browser and mobile visual checks remain manual: browser automation could not reliably determine the local Windows browser URL and stopped before page interaction.
+Verified for this implementation: lint, all ten automated domain tests, and the production build pass. The local preview returned HTTP 200 and rendered the sample notice, seven default eligible books, and fixed-template label. Domain checks also confirm the exact English example (₹450 / 300 pages), narrowed limits (₹200 / 100 pages), and empty result (₹100), plus negative/blank validation and selection eligibility. These checks do not verify browser interactions.
+
+On the verification retry, the browser connector exposed no browsers and native Windows `get_window_state` timed out twice after refreshing the target. Browser interactions, draft persistence/reset in the rendered UI, navigation scrolling, keyboard operation/focus, and 390px layout/overflow remain unverified. An HTTP response alone does not verify these checks.
+
+Section links retain their anchor destinations and hover/focus styles. The permanently active Workspace underline and `aria-current="page"` were removed because the links navigate sections of the same page, without tracking the current section.
 
 ## Structure
 
