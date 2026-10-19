@@ -98,13 +98,30 @@ CSV import verification: all **41 Node tests** (14 parser, 11 workspace domain, 
 
 ### Local server and conflicts
 
-`playwright.config.ts` explicitly uses **http://localhost:3000** as both `baseURL` and the documented [Playwright `webServer`](https://playwright.dev/docs/test-webserver) URL. Locally it reuses a responding server; when absent, Playwright starts `npm run dev -- --hostname localhost --port 3000`. In CI it requires its own server. It never chooses another port automatically.
+By default, `playwright.config.ts` uses **http://localhost:3000** as both `baseURL` and the documented [Playwright `webServer`](https://playwright.dev/docs/test-webserver) URL. Locally it reuses a responding server; when absent, Playwright starts `npm run dev -- --hostname localhost --port 3000`. In CI it requires its own server. It never chooses another port automatically.
 
 Before browser interactions, global setup verifies that the response has the AfterHours title and workspace section IDs. A different app or a redirect on port 3000 fails with a target/port-conflict message. Next.js startup and server-lock errors remain visible in the runner output. Inspect the existing server and resolve the conflict manually; the setup does not kill existing processes or delete lock files. Playwright cleans up a server only when that test run started it.
 
 A reused server must serve the current checkout. If its file watcher keeps serving an older stylesheet after source edits, restart that AfterHours server before rerunning. During this setup, an existing dev server served stale CSS; restarting only its verified project process allowed the runner to start the updated checkout without deleting any locks.
 
 To test a production preview, run `npm run build` and `npm start` separately on port 3000, then run `npm run test:e2e` to reuse it. For a visible test browser, use `npm run test:e2e -- --headed`.
+
+### Explicit deployed target
+
+Set `PLAYWRIGHT_BASE_URL` to the actual public app origin to run the same journeys against a deployment. The following PowerShell example uses a placeholder; replace it with the provider-generated URL recorded after deployment:
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL = 'https://your-deployment.vercel.app'
+try {
+  npm run test:e2e
+} finally {
+  Remove-Item Env:PLAYWRIGHT_BASE_URL -ErrorAction SilentlyContinue
+}
+```
+
+An explicitly supplied URL disables `webServer` entirely, including when it points to an already-running local production preview. The runner never starts or falls back to a local server in this mode. Targets must be HTTPS origins without embedded credentials, paths, queries, or fragments; loopback HTTP origins such as `http://localhost:3000` are also allowed. An empty or invalid value fails configuration rather than reverting to localhost. Remove the environment variable to restore the default local workflow.
+
+The anonymous-access preflight creates a fresh request context with no login cookies or credentials, requires a successful AfterHours title and workspace-section response, and refuses redirects, HTTP 401/403, and TLS errors. Each browser journey also starts in a new browser context without saved authentication. Visitor protection or a wrong target is a failed verification, not evidence that the app is publicly usable. These checks need no Qloo or LLM credentials and do not bypass hosting protection.
 
 ### Reports and screenshots
 
@@ -157,7 +174,7 @@ Dependency triage on 2026-10-19 confirmed nine affected package entries (two mod
 - `tests/workspace.test.ts`: automated domain behavior checks.
 - `tests/catalogue-import.test.ts`: focused offline parser checks.
 - `playwright.config.ts`: isolated Chromium runner, server lifecycle, reporters, and failure artifacts.
-- `e2e/global-setup.ts`: verifies the localhost target is AfterHours.
+- `e2e/global-setup.ts`: verifies the configured target is AfterHours and accessible without authentication.
 - `e2e/workspace.spec.ts`: independent browser interaction, mobile, and keyboard checks.
 - `e2e/catalogue-import.spec.ts`: independent CSV import, preservation, filtering, and mobile journeys.
 - `scripts/qloo-smoke.mjs`: manual, credential-gated official CLI book search.
