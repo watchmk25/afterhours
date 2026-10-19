@@ -123,6 +123,8 @@ An explicitly supplied URL disables `webServer` entirely, including when it poin
 
 The anonymous-access preflight creates a fresh request context with no login cookies or credentials, requires a successful AfterHours title and workspace-section response, and refuses redirects, HTTP 401/403, and TLS errors. Each browser journey also starts in a new browser context without saved authentication. Visitor protection or a wrong target is a failed verification, not evidence that the app is publicly usable. These checks need no Qloo or LLM credentials and do not bypass hosting protection.
 
+CLI deployments use the tracked `.vercelignore` to exclude actual environment files, local build output, browser reports/screenshots/traces, and other generated artifacts. Git ignore rules alone do not exclude all of these from a Vercel CLI upload. After linking the correct personal Hobby project, inspect filenames with `npx --yes vercel@64.5.0 deploy --dry --json` before deploying a clean, reviewed `main` checkout with `npx --yes vercel@64.5.0 deploy --prod`. Use the Next.js preset and leave Qloo/LLM environment variables unconfigured. Keep the GitHub repository private and do not pass `--public`; anonymous app access is verified separately against the assigned production URL.
+
 ### Reports and screenshots
 
 - `playwright-report/index.html`: HTML report, including the mobile screenshot attachment. Open with `npx playwright show-report`.
@@ -185,4 +187,4 @@ Dependency triage on 2026-10-19 confirmed nine affected package entries (two mod
 
 All inputs, choices, and outline edits live only in the current page session and are lost on reload. The workspace has no runtime API calls, Qloo IDs, taste matches, cultural explanations, LLM-generated content, or invented API responses. The optional local smoke check does not connect Qloo to the workspace. Eligibility does not establish reader suitability or availability at a real shop.
 
-Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, Qloo matching, and AI planning are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. This branch is intended for review and has not been deployed.
+Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, Qloo matching, and AI planning are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. Hosting the app does not enable any of these integrations or persistence.
