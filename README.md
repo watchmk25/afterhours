@@ -36,21 +36,56 @@ npm start
 
 ## Checks
 
+Install the locked development dependencies and Playwright's matching Chromium once:
+
+```sh
+npm ci
+npx playwright install chromium
+```
+
+Then run the independent suites:
+
 ```sh
 npm run lint
 npm test
+npm run test:e2e
 npm run build
 ```
 
-The dependency-free Node tests exercise stock exclusion, alphabetical order, inclusive price/page boundaries, language filtering, invalid inputs, empty results, fresh default/example state, audience independence, and selection validity. The test runner uses `--test-isolation=none` to work in environments that restrict child-process creation.
+`npm test` runs only the existing Node domain tests in `tests/*.test.ts`. They exercise stock exclusion, alphabetical order, inclusive price/page boundaries, language filtering, invalid inputs, empty results, fresh default/example state, audience independence, and selection validity. The Node runner uses `--test-isolation=none` for environments that restrict child-process creation.
 
-Browser interaction and responsive layout checks should cover: editable favourites; Load example; Reset and Reset filters; combined filters; invalid numeric inputs; deselecting all languages; no matching books; selecting/editing an outline; retaining a draft for still-eligible books; clearing it after invalidation; and mobile/keyboard use.
+`npm run test:e2e` runs only `e2e/*.spec.ts`, using pinned Playwright Test 1.64.1 and its own isolated Chromium browser. It does not connect to Brave or alter Windows Computer Use safeguards. Each test starts in a fresh browser context; there is one worker and no automatic retries.
 
-Verified for this implementation: lint, all ten automated domain tests, and the production build pass. The local preview returned HTTP 200 and rendered the sample notice, seven default eligible books, and fixed-template label. Domain checks also confirm the exact English example (₹450 / 300 pages), narrowed limits (₹200 / 100 pages), and empty result (₹100), plus negative/blank validation and selection eligibility. These checks do not verify browser interactions.
+The six browser tests cover:
 
-On the verification retry, the browser connector exposed no browsers and native Windows `get_window_state` timed out twice after refreshing the target. Browser interactions, draft persistence/reset in the rendered UI, navigation scrolling, keyboard operation/focus, and 390px layout/overflow remain unverified. An HTTP response alone does not verify these checks.
+1. Load example: exactly Malgudi Days, The Blue Umbrella, and The Guide, with English, ₹450, and 300 pages.
+2. Select The Guide, edit title and notes, then lower the price limit to ₹400 without switching books; selection and edits persist.
+3. Lower the price limit to ₹100; empty results clear the invalid selection and draft. Widening the limit does not resurrect either.
+4. Reset: source-defined default filters, blank favourites, and no selected book or stale outline.
+5. A 390px viewport: document overflow, application control and card bounds, and a full-page screenshot with eligible books and a selected editable outline.
+6. Actual Tab, Space, Enter, and typing: section navigation, visible focus rings, checkbox changes, book selection, and outline editing.
 
-Section links retain their anchor destinations and hover/focus styles. The permanently active Workspace underline and `aria-current="page"` were removed because the links navigate sections of the same page, without tracking the current section.
+Verification for this change: all six Chromium tests passed against both a fresh development server and the production preview, with one worker and zero retries. The 390px full-page screenshot was visually inspected; narrow-screen cards now use a single full-width column with readable details. Lint, all ten domain tests, and the production build passed. These browser checks cover Chromium and an emulated viewport; other browsers and physical mobile devices are not covered.
+
+### Local server and conflicts
+
+`playwright.config.ts` explicitly uses **http://localhost:3000** as both `baseURL` and the documented [Playwright `webServer`](https://playwright.dev/docs/test-webserver) URL. Locally it reuses a responding server; when absent, Playwright starts `npm run dev -- --hostname localhost --port 3000`. In CI it requires its own server. It never chooses another port automatically.
+
+Before browser interactions, global setup verifies that the response has the AfterHours title and workspace section IDs. A different app or a redirect on port 3000 fails with a target/port-conflict message. Next.js startup and server-lock errors remain visible in the runner output. Inspect the existing server and resolve the conflict manually; the setup does not kill existing processes or delete lock files. Playwright cleans up a server only when that test run started it.
+
+A reused server must serve the current checkout. If its file watcher keeps serving an older stylesheet after source edits, restart that AfterHours server before rerunning. During this setup, an existing dev server served stale CSS; restarting only its verified project process allowed the runner to start the updated checkout without deleting any locks.
+
+To test a production preview, run `npm run build` and `npm start` separately on port 3000, then run `npm run test:e2e` to reuse it. For a visible test browser, use `npm run test:e2e -- --headed`.
+
+### Reports and screenshots
+
+- `playwright-report/index.html`: HTML report, including the mobile screenshot attachment. Open with `npx playwright show-report`.
+- `test-results/results.json`: machine-readable results.
+- `test-results/<mobile-test-name>/afterhours-mobile-390.png`: full-page mobile capture on every mobile test run, including failed layout checks.
+- `test-results/<failed-test-name>/test-failed-1.png` and `trace.zip`: retained failure screenshot and trace. Inspect traces with `npx playwright show-trace <path-to-trace.zip>`.
+- `artifacts/playwright/`: retained screenshots and the original failure trace from the visual review during this setup.
+
+Generated reports and artifacts are ignored by Git and ESLint. Playwright replaces `test-results/` and `playwright-report/` on subsequent runs; copy a run's artifacts elsewhere before rerunning when you need to retain its history. Browser installation and launch can require local permission for downloads, browser processes, and test workers.
 
 ## Structure
 
@@ -60,6 +95,9 @@ Section links retain their anchor destinations and hover/focus styles. The perma
 - `lib/catalogue.ts`: local catalogue fixtures with local slug IDs.
 - `lib/workspace.ts`: validation, filtering, default/example inputs, and selection helpers.
 - `tests/workspace.test.ts`: automated domain behavior checks.
+- `playwright.config.ts`: isolated Chromium runner, server lifecycle, reporters, and failure artifacts.
+- `e2e/global-setup.ts`: verifies the localhost target is AfterHours.
+- `e2e/workspace.spec.ts`: independent browser interaction, mobile, and keyboard checks.
 
 ## Limitations
 
