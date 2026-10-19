@@ -52,7 +52,7 @@ npm run test:e2e
 npm run build
 ```
 
-`npm test` runs only the existing Node domain tests in `tests/*.test.ts`. They exercise stock exclusion, alphabetical order, inclusive price/page boundaries, language filtering, invalid inputs, empty results, fresh default/example state, audience independence, and selection validity. The Node runner uses `--test-isolation=none` for environments that restrict child-process creation.
+`npm test` runs the Node tests in `tests/*.test.ts`, separately from Playwright. Domain tests exercise stock exclusion, alphabetical order, inclusive price/page boundaries, language filtering, invalid inputs, empty results, fresh default/example state, audience independence, and selection validity. Diagnostic tests exercise credential gating and safe smoke-check output using local test fixtures, without Qloo requests. The Node runner uses `--test-isolation=none` for environments that restrict child-process creation.
 
 `npm run test:e2e` runs only `e2e/*.spec.ts`, using pinned Playwright Test 1.64.1 and its own isolated Chromium browser. It does not connect to Brave or alter Windows Computer Use safeguards. Each test starts in a fresh browser context; there is one worker and no automatic retries.
 
@@ -87,6 +87,34 @@ To test a production preview, run `npm run build` and `npm start` separately on 
 
 Generated reports and artifacts are ignored by Git and ESLint. Playwright replaces `test-results/` and `playwright-report/` on subsequent runs; copy a run's artifacts elsewhere before rerunning when you need to retain its history. Browser installation and launch can require local permission for downloads, browser processes, and test workers.
 
+## Optional Qloo connection smoke check
+
+This is a manually invoked, trusted local diagnostic. The sample workspace does not call it and its eligibility, templates, and sample-mode notice are unchanged. Follow the official [hackathon kit](https://github.com/qloo/qloo-hackathon-kit), [API access requirements](https://github.com/qloo/qloo-hackathon-kit/blob/main/docs/API_ACCESS.md), and [CLI workflow](https://github.com/qloo/qloo-hackathon-kit/blob/main/starter/cli-workflow/README.md). Use an individually issued event credential and confirm the event quota, expiry, and support contact with the organizers.
+
+`npm ci` installs the pinned official `@qloo/qloo-harness` 0.1.26 development dependency locally; a global installation and a model-provider account are unnecessary. Node.js 24 LTS meets the harness's minimum version. Its CLI help can be inspected without making API requests:
+
+```sh
+npx --no-install qloo --version
+npx --no-install qloo api --help
+npx --no-install qloo api search --help
+```
+
+For configuration, copy the tracked, empty `.env.example` to `.env.local` **only if that file does not already exist**, then set `QLOO_API_KEY` in your local editor. Alternatively supply `QLOO_API_KEY` through the process environment. Do not share the value in chat, command arguments, logs, screenshots, or source control. Never prefix it with `NEXT_PUBLIC_`. Actual `.env*` files remain ignored; only `.env.example` is allowed in Git.
+
+```sh
+npm run qloo:smoke
+```
+
+The script reads only `QLOO_API_KEY` from the process environment or project-root `.env.local`, using Node's built-in dotenv parser. An explicitly set process value takes precedence, including an empty value. It does not load `.env`, other environment files, or credentials from private harness setup. Without a nonblank key it prints **Qloo credentials not configured**, exits successfully as a skipped diagnostic, and never starts the harness or sends an API request. Configuration alone is not a verified connection.
+
+With a key, it invokes the documented `qloo api search --query "The Guide" --type book --take 3 --json` once. The credential is passed only through the child environment. The endpoint is fixed to the official `https://api.qloo.com`, overriding any private harness base URL. The pinned direct-search implementation makes one fetch and has no automatic retries; the wrapper bounds the whole process to 30 seconds and limits captured output to 1 MiB. It does not use multi-step workflows, pagination, or follow-up entity calls. Failures exit with code 1 and a sanitized category; raw child errors are withheld because upstream text could echo secrets.
+
+On successful CLI completion, the script validates that its JSON output is an array of at most three candidates and prints that JSON with credential-like fields and the configured key redacted. No title/author/ID summary mapping is assumed. Harness 0.1.26 emits the upstream `results` array rather than the complete response envelope, and defaults absent results to `[]`; an empty array does not establish a useful book match. Review the actual returned fields and identify the intended title and author before any future use. No entity is automatically accepted or saved, even if only one candidate is returned. Switching workspace books still starts a fresh local template.
+
+Readiness verification: the missing-credential path was exercised with no harness invocation/API requests. All 26 Node tests (10 domain, 16 diagnostic), lint, the production build, and all six Chromium tests against the production preview passed. The initial development-server browser run timed out waiting for a response within 120 seconds before interactions began; the server configuration was preserved. **Live connectivity and the actual candidate schema are UNVERIFIED: no credential was available, and no live request was made.** Event access, quota, expiry, and whether Qloo unambiguously identifies *The Guide* by R. K. Narayan remain unknown. No sample data is presented as a Qloo response.
+
+The installation audit reported nine development-dependency findings (two moderate, seven high), including transitive harness agent dependencies and the existing lint dependency chain. No broad upgrades or forced audit fixes were applied. The harness is used only for this local diagnostic and is not imported by the web app.
+
 ## Structure
 
 - `app/`: Next.js App Router page, root metadata/layout, local icon, and global styles.
@@ -98,9 +126,12 @@ Generated reports and artifacts are ignored by Git and ESLint. Playwright replac
 - `playwright.config.ts`: isolated Chromium runner, server lifecycle, reporters, and failure artifacts.
 - `e2e/global-setup.ts`: verifies the localhost target is AfterHours.
 - `e2e/workspace.spec.ts`: independent browser interaction, mobile, and keyboard checks.
+- `scripts/qloo-smoke.mjs`: manual, credential-gated official CLI book search.
+- `tests/qloo-smoke.test.ts`: offline diagnostic safety and output checks.
+- `.env.example`: empty local diagnostic credential placeholder.
 
 ## Limitations
 
-All inputs, choices, and outline edits live only in the current page session and are lost on reload. There are no runtime API calls, Qloo IDs, taste matches, cultural explanations, LLM-generated content, or invented API responses. Eligibility does not establish reader suitability or availability at a real shop.
+All inputs, choices, and outline edits live only in the current page session and are lost on reload. The workspace has no runtime API calls, Qloo IDs, taste matches, cultural explanations, LLM-generated content, or invented API responses. The optional local smoke check does not connect Qloo to the workspace. Eligibility does not establish reader suitability or availability at a real shop.
 
 Authentication, databases, catalogue uploads, exports, live inventory, Qloo matching, and AI planning are deferred. The fixture catalogue is intentionally small. This branch is intended for local review and has not been deployed.
