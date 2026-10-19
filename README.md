@@ -1,8 +1,8 @@
 # AfterHours
 
-A sample organizer workspace for independent bookstores and book clubs. Explore books that fit practical limits and adapt an event outline for your next gathering.
+A local organizer workspace for independent bookstores and book clubs. Start with illustrative sample books or import your inventory, explore books that fit practical limits, and adapt an event outline for your next gathering.
 
-**Sample mode — Qloo matching and AI planning are not connected.**
+**Qloo matching and AI planning are not connected.** The default sample inventory is illustrative; imported inventory comes from your CSV and is not independently verified.
 
 ## Run locally
 
@@ -26,13 +26,40 @@ npm start
 
 - A responsive cream-and-green workspace with AfterHours branding and explicit sample-mode messaging.
 - Editable audience favourites grouped into books, films, and musicians, one favourite per line. These are collected for future taste matching and **do not influence eligibility** in this version.
-- Maximum price per copy in INR, maximum page count, and English/Hindi/Bengali language filters. Filtering updates immediately; invalid numeric inputs or an empty language selection produce field-specific guidance and no results.
+- Maximum price per copy in INR, maximum page count, and language filters derived from the active catalogue (English/Hindi/Bengali for the sample). Filtering updates immediately; invalid numeric inputs or an empty language selection produce field-specific guidance and no results.
 - A bundled ten-book catalogue with identifiable title/author pairs. Prices, page counts, stock, edition languages, and display covers are illustrative fixtures, not retailer or publisher data.
 - Only in-stock books satisfying **all** selected constraints appear under **Eligible books**, ordered alphabetically by title. Limits are inclusive. No affinity scores or personalized ranking are computed.
 - A helpful empty-results state with a Reset filters control that preserves audience favourites.
 - Select an eligible book to edit a fixed event template: title, 75-minute running order, generic discussion prompts, and organizer notes. It is explicitly **not AI-generated**.
 - A selection that becomes ineligible is cleared together with its outline and does not return automatically when filters are widened. Filter changes that keep the book eligible preserve the draft. Switching books starts a fresh template.
-- **Load example** fills audience favourites and example filters (₹450, 300 pages, English), clearing any selection/outline. **Reset** clears favourites and selection/outline and restores ₹600, 400 pages, and all three languages.
+- **Load example** fills audience favourites and example filters (₹450, 300 pages, English when available, otherwise all active languages), clearing any selection/outline while retaining the active catalogue. **Reset** clears favourites and selection/outline and restores ₹600, 400 pages, and all languages from the active catalogue.
+- A browser-local CSV import with validation, representative preview, explicit replacement confirmation, and a separate **Restore sample catalogue** action.
+
+## Import your catalogue
+
+Use **Download CSV template** in **Your catalogue**. It contains these six required, case-sensitive column names and one illustrative example book row; replace the example with your own inventory:
+
+```csv
+title,author,price_inr,pages,language,stock
+The Guide,R. K. Narayan,299,256,English,18
+```
+
+Choose a UTF-8 CSV file of at most **256 KiB (262,144 bytes)** and **500 nonblank data rows**, excluding the header. A UTF-8 BOM, Windows CRLF line endings, quoted commas, escaped double quotes (`""`), and quoted line breaks are supported. Headers may be reordered; surrounding header/value whitespace is trimmed. Extra columns are ignored, but every record must have the same number of fields as its header. Truly blank records are skipped; comma-only and quoted-empty records are validated rather than silently discarded.
+
+- `title`, `author`, and `language` must be nonempty after trimming. Language labels are supplied by the organizer, not restricted to the sample's three languages; differently spelled/cased labels remain distinct.
+- `price_inr` must be a finite, nonnegative number. Zero-price books are allowed. Prices are retained numerically; currency displays round to two decimal places.
+- `pages` must be a positive safe integer; `stock` must be a nonnegative safe integer. Books with zero stock are imported but excluded from Eligible books.
+- Malformed quoting, missing/duplicate required headers, invalid values, inconsistent record widths, invalid UTF-8, and exceeded limits reject the entire file. There is no partial import. Errors identify the logical CSV record row (header is row 1; quoted newlines stay within one row) and column where applicable. Large error lists are capped with an omitted-error count.
+
+Papa Parse **5.7.0** handles CSV fields, with strict quote validation before parsing. Typings **5.5.2** are development-only. Both are pinned in the lockfile. Parsing and validation happen in the browser; the file is never posted to a server.
+
+Uploading creates a preview with the total count and the first five books (or all books for a smaller file). The active catalogue, selected book, and edited outline remain unchanged until **Replace catalogue** is clicked. Invalid files and **Cancel import** preserve all three. The confirmation notice explains that replacement clears the selection and event outline while retaining audience favourites. Numeric filter limits are also retained; all languages from the new catalogue are initially selected.
+
+Imported rows receive unique `local-import-` UUIDs, including repeated title/author rows. These identify local catalogue records and are separate from any future Qloo entity ID. Reimporting creates fresh IDs. Imported books use the same in-stock, inclusive price/page, language, and alphabetical filtering, and the same editable fixed event template as samples.
+
+**Reset** retains imported inventory while clearing favourites, selection, and outline and restoring default numeric limits/all active languages. **Reset filters** preserves favourites and inventory. **Restore sample catalogue** switches back to the ten fixtures, selects all sample languages, clears selection/outline, and preserves favourites and numeric limits. These actions are distinct from cancelling an unconfirmed import.
+
+Inventory, inputs, selections, and outline edits are session-only. Reloading returns to the sample catalogue and default workspace; nothing is persisted. No matching, affinity, cultural explanation, or AI planning is introduced by import.
 
 ## Checks
 
@@ -52,11 +79,11 @@ npm run test:e2e
 npm run build
 ```
 
-`npm test` runs the Node tests in `tests/*.test.ts`, separately from Playwright. Domain tests exercise stock exclusion, alphabetical order, inclusive price/page boundaries, language filtering, invalid inputs, empty results, fresh default/example state, audience independence, and selection validity. Diagnostic tests exercise credential gating and safe smoke-check output using local test fixtures, without Qloo requests. The Node runner uses `--test-isolation=none` for environments that restrict child-process creation.
+`npm test` runs the Node tests in `tests/*.test.ts`, separately from Playwright. Domain tests exercise stock exclusion, alphabetical order, inclusive price/page boundaries, dynamic language filtering, invalid inputs, empty results, fresh default/example state, audience independence, and selection validity. Fourteen parser tests cover field mapping, unique local IDs, quoted fields/BOM/CRLF, logical rows, headers, malformed quoting, atomic rejection, numeric/text validation, exact byte/row boundaries, and bounded errors. Diagnostic tests exercise credential gating and safe smoke-check output using local test fixtures, without Qloo requests. The Node runner uses `--test-isolation=none` for environments that restrict child-process creation.
 
 `npm run test:e2e` runs only `e2e/*.spec.ts`, using pinned Playwright Test 1.64.1 and its own isolated Chromium browser. It does not connect to Brave or alter Windows Computer Use safeguards. Each test starts in a fresh browser context; there is one worker and no automatic retries.
 
-The six browser tests cover:
+The six original workspace browser tests remain unchanged and cover:
 
 1. Load example: exactly Malgudi Days, The Blue Umbrella, and The Guide, with English, ₹450, and 300 pages.
 2. Select The Guide, edit title and notes, then lower the price limit to ₹400 without switching books; selection and edits persist.
@@ -65,7 +92,9 @@ The six browser tests cover:
 5. A 390px viewport: document overflow, application control and card bounds, and a full-page screenshot with eligible books and a selected editable outline.
 6. Actual Tab, Space, Enter, and typing: section navigation, visible focus rings, checkbox changes, book selection, and outline editing.
 
-Verification for this change: all six Chromium tests passed against both a fresh development server and the production preview, with one worker and zero retries. The 390px full-page screenshot was visually inspected; narrow-screen cards now use a single full-width column with readable details. Lint, all ten domain tests, and the production build passed. These browser checks cover Chromium and an emulated viewport; other browsers and physical mobile devices are not covered.
+Eight additional independent CSV browser journeys cover preview/confirmation and filtering, template download and BOM/CRLF quoted fields, atomic invalid-file rejection and limits, cancel versus confirm with edited drafts, dynamic languages and Reset, restoring samples, reload behavior, and 390px preview/imported-outline layout.
+
+CSV import verification: all **41 Node tests** (14 parser, 11 workspace domain, 16 diagnostic), lint, the production build, and all **14 Chromium tests** passed. Chromium ran against the production preview with one worker and zero retries. The 390px full-page import preview and selected-outline screenshots were visually inspected; cards and fields fit without horizontal overflow. These browser checks cover Chromium and emulated viewports; other browsers and physical mobile devices are not covered.
 
 ### Local server and conflicts
 
@@ -121,11 +150,16 @@ Dependency triage on 2026-10-19 confirmed nine affected package entries (two mod
 - `components/`: workspace state and focused audience, filter, catalogue, and event-outline components.
 - `lib/types.ts`: shared sample-domain types.
 - `lib/catalogue.ts`: local catalogue fixtures with local slug IDs.
+- `lib/catalogue-import.ts`: bounded, strict, atomic CSV parsing and validation with Papa Parse.
 - `lib/workspace.ts`: validation, filtering, default/example inputs, and selection helpers.
+- `components/catalogue-import.tsx`: local file reading, errors, preview/confirmation, and sample restoration.
+- `public/catalogue-template.csv`: downloadable required-column template with an illustrative row.
 - `tests/workspace.test.ts`: automated domain behavior checks.
+- `tests/catalogue-import.test.ts`: focused offline parser checks.
 - `playwright.config.ts`: isolated Chromium runner, server lifecycle, reporters, and failure artifacts.
 - `e2e/global-setup.ts`: verifies the localhost target is AfterHours.
 - `e2e/workspace.spec.ts`: independent browser interaction, mobile, and keyboard checks.
+- `e2e/catalogue-import.spec.ts`: independent CSV import, preservation, filtering, and mobile journeys.
 - `scripts/qloo-smoke.mjs`: manual, credential-gated official CLI book search.
 - `tests/qloo-smoke.test.ts`: offline diagnostic safety and output checks.
 - `.env.example`: empty local diagnostic credential placeholder.
@@ -134,4 +168,4 @@ Dependency triage on 2026-10-19 confirmed nine affected package entries (two mod
 
 All inputs, choices, and outline edits live only in the current page session and are lost on reload. The workspace has no runtime API calls, Qloo IDs, taste matches, cultural explanations, LLM-generated content, or invented API responses. The optional local smoke check does not connect Qloo to the workspace. Eligibility does not establish reader suitability or availability at a real shop.
 
-Authentication, databases, catalogue uploads, exports, live inventory, Qloo matching, and AI planning are deferred. The fixture catalogue is intentionally small. This branch is intended for local review and has not been deployed.
+Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, Qloo matching, and AI planning are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. This branch is intended for review and has not been deployed.

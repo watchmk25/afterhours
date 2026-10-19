@@ -11,25 +11,39 @@ export const LANGUAGES: readonly BookLanguage[] = [
   "Bengali",
 ];
 
-export function createDefaultInputs(): WorkspaceInputs {
+export function catalogueLanguages(catalogue: readonly Book[]): BookLanguage[] {
+  return [...new Set(catalogue.map((book) => book.language))].sort((a, b) =>
+    a.localeCompare(b, "en"),
+  );
+}
+
+export function createDefaultInputs(
+  languages: readonly BookLanguage[] = LANGUAGES,
+): WorkspaceInputs {
   return {
     audience: { books: "", films: "", musicians: "" },
     filters: {
       maxPrice: "600",
       maxPages: "400",
-      languages: [...LANGUAGES],
+      languages: [...languages],
     },
   };
 }
 
-export function createExampleInputs(): WorkspaceInputs {
+export function createExampleInputs(
+  languages: readonly BookLanguage[] = LANGUAGES,
+): WorkspaceInputs {
   return {
     audience: {
       books: "The Namesake\nMalgudi Days",
       films: "The Lunchbox\nPiku",
       musicians: "Prateek Kuhad\nNorah Jones",
     },
-    filters: { maxPrice: "450", maxPages: "300", languages: ["English"] },
+    filters: {
+      maxPrice: "450",
+      maxPages: "300",
+      languages: languages.includes("English") ? ["English"] : [...languages],
+    },
   };
 }
 
@@ -39,7 +53,10 @@ export type FilterErrors = {
   languages?: string;
 };
 
-export function validateFilters(inputs: FilterInputs): FilterErrors {
+export function validateFilters(
+  inputs: FilterInputs,
+  availableLanguages: readonly BookLanguage[] = LANGUAGES,
+): FilterErrors {
   const errors: FilterErrors = {};
   const price = inputs.maxPrice.trim();
   const pages = inputs.maxPages.trim();
@@ -62,9 +79,9 @@ export function validateFilters(inputs: FilterInputs): FilterErrors {
 
   if (
     inputs.languages.length === 0 ||
-    inputs.languages.some((language) => !LANGUAGES.includes(language))
+    inputs.languages.some((language) => !availableLanguages.includes(language))
   ) {
-    errors.languages = "Choose at least one supported language.";
+    errors.languages = "Choose at least one language from this catalogue.";
   }
 
   return errors;
@@ -74,7 +91,7 @@ export function filterBooks(
   catalogue: readonly Book[],
   filters: FilterInputs,
 ): Book[] {
-  if (Object.keys(validateFilters(filters)).length > 0) return [];
+  if (Object.keys(validateFilters(filters, catalogueLanguages(catalogue))).length > 0) return [];
 
   return catalogue
     .filter(

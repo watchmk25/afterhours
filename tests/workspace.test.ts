@@ -5,6 +5,7 @@ import type { FilterInputs } from "../lib/types.ts";
 import {
   createDefaultInputs,
   createExampleInputs,
+  catalogueLanguages,
   filterBooks,
   getEligibleSelection,
   LANGUAGES,
@@ -133,4 +134,27 @@ test("selection is valid only while eligible and a cleared selection does not re
   assert.equal(getEligibleSelection(selectedId, eligible), null);
   assert.equal(getEligibleSelection("unknown-local-id", eligible), null);
   assert.equal(getEligibleSelection("the-palace-of-illusions", eligible), null);
+});
+
+test("active catalogue supplies languages for filtering and fresh reset/example inputs", () => {
+  const catalogue = [
+    { ...SAMPLE_CATALOGUE[0], id: "local-one", language: "Tamil", pages: 120, priceInr: 0 },
+    { ...SAMPLE_CATALOGUE[1], id: "local-two", language: "Marathi", pages: 200 },
+    { ...SAMPLE_CATALOGUE[2], id: "local-three", language: "Tamil", stock: 0 },
+  ];
+  const languages = catalogueLanguages(catalogue);
+  assert.deepEqual(languages, ["Marathi", "Tamil"]);
+  const defaults = createDefaultInputs(languages);
+  assert.deepEqual(defaults.filters.languages, languages);
+  assert.equal(defaults.filters.maxPrice, "600");
+  assert.equal(defaults.filters.maxPages, "400");
+  assert.deepEqual(defaults.audience, { books: "", films: "", musicians: "" });
+  assert.equal(validateFilters(defaults.filters, languages).languages, undefined);
+  assert.equal(filterBooks(catalogue, defaults.filters).length, 2);
+  assert.equal(filterBooks(catalogue, { ...defaults.filters, languages: ["Tamil"] }).length, 1);
+  assert(validateFilters({ ...defaults.filters, languages: ["English"] }, languages).languages);
+  assert.deepEqual(createExampleInputs(languages).filters.languages, languages);
+  assert.deepEqual(createExampleInputs(["Tamil", "English"]).filters.languages, ["English"]);
+  defaults.filters.languages.pop();
+  assert.deepEqual(createDefaultInputs(languages).filters.languages, languages);
 });

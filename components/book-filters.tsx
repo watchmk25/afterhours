@@ -1,15 +1,17 @@
 import type { FilterInputs } from "@/lib/types";
-import { LANGUAGES, validateFilters } from "@/lib/workspace";
+import { validateFilters } from "@/lib/workspace";
 import { Icon } from "./icons";
 
 export function BookFilters({
   value,
+  languages,
   onChange,
 }: {
   value: FilterInputs;
+  languages: readonly string[];
   onChange: (value: FilterInputs) => void;
 }) {
-  const errors = validateFilters(value);
+  const errors = validateFilters(value, languages);
   return (
     <section className="filters-section" aria-labelledby="filters-title">
       <h3 className="subsection-title" id="filters-title">
@@ -82,7 +84,7 @@ export function BookFilters({
       >
         <legend className="field-label">Languages</legend>
         <div className="language-options">
-          {LANGUAGES.map((language) => (
+          {languages.map((language) => (
             <label className="language-option" key={language}>
               <input
                 type="checkbox"

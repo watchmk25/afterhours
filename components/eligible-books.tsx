@@ -11,6 +11,7 @@ const rupees = new Intl.NumberFormat("en-IN", {
 export function EligibleBooks({
   books,
   total,
+  source,
   selectedId,
   invalid,
   onSelect,
@@ -18,6 +19,7 @@ export function EligibleBooks({
 }: {
   books: readonly Book[];
   total: number;
+  source: "sample" | "imported";
   selectedId: string | null;
   invalid: boolean;
   onSelect: (id: string) => void;
@@ -43,11 +45,12 @@ export function EligibleBooks({
       <p className="quiet results-summary" aria-live="polite" aria-atomic="true">
         {invalid
           ? "Check your filters to see eligible books."
-          : `${books.length} of ${total} sample books · In stock and within your limits`}
+          : `${books.length} of ${total} ${source === "sample" ? "sample" : "imported"} books · In stock and within your limits`}
       </p>
       <p className="sample-data-note" id="sample-values">
-        Prices, page counts, stock, and edition languages are illustrative sample
-        values. Display covers are illustrations.
+        {source === "sample"
+          ? "Prices, page counts, stock, and edition languages are illustrative sample values. Display covers are illustrations."
+          : "Prices, page counts, stock, and languages come from your imported CSV and have not been independently verified. Display covers are illustrations."}
       </p>
       {books.length > 0 ? (
         <ul className="book-grid" aria-describedby="sample-values">
@@ -67,7 +70,7 @@ export function EligibleBooks({
                     <span className="cover-rule" />
                     <span className="cover-title">{book.title}</span>
                     <span className="cover-author">{book.author}</span>
-                    <span className="cover-publisher">THE SAMPLE SHELF</span>
+                    <span className="cover-publisher">{source === "sample" ? "THE SAMPLE SHELF" : "YOUR CATALOGUE"}</span>
                   </div>
                   <div className="book-details">
                     <span className="book-language">{book.language}</span>

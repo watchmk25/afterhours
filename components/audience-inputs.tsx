@@ -54,8 +54,8 @@ export function AudienceInputs({
       </div>
       <p className="input-note" id="audience-limit">
         <span className="note-dot" />
-        Collected for future taste matching. These inputs do not influence sample
-        results yet.
+        Collected for future taste matching. These inputs do not influence book
+        eligibility yet.
       </p>
     </section>
   );

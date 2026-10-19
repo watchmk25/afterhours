@@ -1,4 +1,5 @@
-export type BookLanguage = "English" | "Hindi" | "Bengali";
+// Catalogue language labels are organizer-supplied; they are not Qloo entities.
+export type BookLanguage = string;
 
 export type Book = {
   id: string;

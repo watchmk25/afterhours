@@ -1,34 +1,57 @@
 "use client";
 
 import { useState } from "react";
-import { SAMPLE_CATALOGUE as CATALOGUE } from "@/lib/catalogue";
-import type { FilterInputs } from "@/lib/types";
+import { SAMPLE_CATALOGUE } from "@/lib/catalogue";
+import type { Book, FilterInputs } from "@/lib/types";
 import {
   createDefaultInputs,
   createExampleInputs,
+  catalogueLanguages,
   filterBooks,
   getEligibleSelection,
   validateFilters,
 } from "@/lib/workspace";
 import { AudienceInputs } from "./audience-inputs";
 import { BookFilters } from "./book-filters";
+import { CatalogueImport } from "./catalogue-import";
 import { EligibleBooks } from "./eligible-books";
 import { EventOutline } from "./event-outline";
 import { Icon } from "./icons";
 
 export function OrganizerWorkspace() {
+  const [catalogue, setCatalogue] = useState<{
+    books: readonly Book[];
+    source: "sample" | "imported";
+    fileName: string | null;
+  }>({ books: SAMPLE_CATALOGUE, source: "sample", fileName: null });
   const [inputs, setInputs] = useState(createDefaultInputs);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const eligibleBooks = filterBooks(CATALOGUE, inputs.filters);
+  const languages = catalogueLanguages(catalogue.books);
+  const eligibleBooks = filterBooks(catalogue.books, inputs.filters);
   const selectedBook = getEligibleSelection(selectedId, eligibleBooks);
-  const invalid = Object.keys(validateFilters(inputs.filters)).length > 0;
+  const invalid = Object.keys(validateFilters(inputs.filters, languages)).length > 0;
+
+  function replaceCatalogue(books: readonly Book[], fileName: string | null) {
+    const source = fileName === null ? "sample" : "imported";
+    setCatalogue({ books, source, fileName });
+    setInputs((current) => ({
+      ...current,
+      filters: { ...current.filters, languages: catalogueLanguages(books) },
+    }));
+    setSelectedId(null);
+    setNotice(
+      source === "sample"
+        ? "Sample catalogue restored. Selection and outline cleared; audience favourites and numeric limits kept."
+        : "Imported catalogue applied. Selection and outline cleared; audience favourites and numeric limits kept. All catalogue languages selected.",
+    );
+  }
 
   function changeFilters(filters: FilterInputs) {
     setInputs((current) => ({ ...current, filters }));
     if (
       selectedId &&
-      !getEligibleSelection(selectedId, filterBooks(CATALOGUE, filters))
+      !getEligibleSelection(selectedId, filterBooks(catalogue.books, filters))
     ) {
       setSelectedId(null);
       setNotice(
@@ -40,7 +63,7 @@ export function OrganizerWorkspace() {
   }
 
   function loadInputs(example: boolean) {
-    setInputs(example ? createExampleInputs() : createDefaultInputs());
+    setInputs(example ? createExampleInputs(languages) : createDefaultInputs(languages));
     setSelectedId(null);
     setNotice(
       example
@@ -83,10 +106,10 @@ export function OrganizerWorkspace() {
         <div className="sample-banner">
           <span className="banner-dot" />
           <p>
-            <strong>Sample mode</strong> — Qloo matching and AI planning are not
+            <strong>{catalogue.source === "sample" ? "Sample mode" : "Imported inventory"}</strong> — Qloo matching and AI planning are not
             connected.
           </p>
-          <span className="sample-badge">SAMPLE DATA</span>
+          <span className="sample-badge">{catalogue.source === "sample" ? "SAMPLE DATA" : "SESSION ONLY"}</span>
         </div>
         <div className="workspace-intro">
           <div>
@@ -116,6 +139,13 @@ export function OrganizerWorkspace() {
             </button>
           </div>
         </div>
+        <CatalogueImport
+          source={catalogue.source}
+          fileName={catalogue.fileName}
+          bookCount={catalogue.books.length}
+          onImport={(books, fileName) => replaceCatalogue(books, fileName)}
+          onRestore={() => replaceCatalogue(SAMPLE_CATALOGUE, null)}
+        />
         <div className="workspace-grid">
           <aside
             className="panel inputs-panel"
@@ -127,7 +157,7 @@ export function OrganizerWorkspace() {
                 setInputs((current) => ({ ...current, audience }))
               }
             />
-            <BookFilters value={inputs.filters} onChange={changeFilters} />
+            <BookFilters value={inputs.filters} languages={languages} onChange={changeFilters} />
             <p className="session-note">
               Session only. Nothing is saved after a reload.
             </p>
@@ -135,7 +165,8 @@ export function OrganizerWorkspace() {
           <div className="workspace-content">
             <EligibleBooks
               books={eligibleBooks}
-              total={CATALOGUE.length}
+              total={catalogue.books.length}
+              source={catalogue.source}
               selectedId={selectedBook?.id ?? null}
               invalid={invalid}
               onSelect={(id) => {
@@ -144,7 +175,7 @@ export function OrganizerWorkspace() {
                   "Book selected. Your editable event template is ready below.",
                 );
               }}
-              onResetFilters={() => changeFilters(createDefaultInputs().filters)}
+              onResetFilters={() => changeFilters(createDefaultInputs(languages).filters)}
             />
             <p
               className={`workspace-notice${notice ? " has-notice" : ""}`}
@@ -161,7 +192,7 @@ export function OrganizerWorkspace() {
             AfterHours<span>.</span>
           </span>
           <p>A space for books, people, and the conversations between them.</p>
-          <span>Sample workspace · No live integrations</span>
+          <span>Organizer workspace · No live integrations</span>
         </footer>
       </main>
     </>
