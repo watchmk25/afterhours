@@ -62,7 +62,8 @@ export function invokeHarness(credential, environment, { execute = execFile, lim
           env: {
             ...environment,
             QLOO_API_KEY: credential,
-            QLOO_BASE_URL: "https://api.qloo.com",
+            QLOO_BASE_URL: "https://hackathon.api.qloo.com",
+            QLOO_TRUSTED_BASE_URL: "https://hackathon.api.qloo.com",
             AFTERHOURS_QLOO_SMOKE_GUARD: "1",
             NO_COLOR: "1",
           },
@@ -107,7 +108,7 @@ function observedHttpStatus(stderr) {
     let target;
     try { target = new URL(lines[index].slice("API request: GET ".length)); } catch { continue; }
     if (
-      target.origin !== "https://api.qloo.com" || target.pathname !== "/search" ||
+      target.origin !== "https://hackathon.api.qloo.com" || target.pathname !== "/search" ||
       target.username || target.password ||
       target.searchParams.get("query") !== "The Guide" ||
       target.searchParams.get("take") !== "3" ||

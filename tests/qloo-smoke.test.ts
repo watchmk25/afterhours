@@ -35,7 +35,7 @@ function structuredFailure(code: string, message = `${rawMarker} ${fixtureCreden
 }
 
 function httpEvidence(status: number) {
-  return "API request: GET https://api.qloo.com/search?query=The+Guide&take=3&types=urn%3Aentity%3Abook\n"
+  return "API request: GET https://hackathon.api.qloo.com/search?query=The+Guide&take=3&types=urn%3Aentity%3Abook\n"
     + `Response: ${status} in 12.3ms\n`;
 }
 
@@ -289,6 +289,26 @@ for (const httpStatus of [401, 403, 429]) {
   });
 }
 
+test("Qloo smoke ignores HTTP evidence from the previous production origin", async () => {
+  const output = captureOutput();
+  const code = await runSmoke({
+    environment: { QLOO_API_KEY: fixtureCredential },
+    invoke: async () => harnessResult({
+      exitCode: 5,
+      stdout: structuredFailure("API_ERROR"),
+      stderr: httpEvidence(401).replace("https://hackathon.api.qloo.com", "https://api.qloo.com"),
+    }),
+    ...output,
+  });
+  assert.equal(code, 1);
+  const diagnostic = failureEvidence(output);
+  assert.equal(diagnostic.stage, "harness execution");
+  assert.equal(diagnostic.processExitCode, 5);
+  assert.equal(diagnostic.errorCode, "API_ERROR");
+  assert.equal(diagnostic.httpStatus, null);
+  assert.equal(diagnostic.requestReachedQloo, "unknown");
+});
+
 for (const scenario of [
   { name: "a code mismatched with exit status", stdout: structuredFailure("AUTH_FAILED"), expectedCode: null },
   { name: "an unrecognized code", stdout: structuredFailure(fixtureCredential), expectedCode: null },
@@ -501,6 +521,7 @@ test("Qloo invocation launches Node directly with credentials only in the child 
   const result = await invokeHarness(fixtureCredential, {
     QLOO_API_KEY: fixtureCredential,
     QLOO_BASE_URL: "https://untrusted-synthetic.invalid",
+    QLOO_TRUSTED_BASE_URL: "https://untrusted-synthetic.invalid",
   }, { execute: fake.execute });
   assert.equal(fake.calls.length, 1);
   const call = fake.calls[0];
@@ -517,7 +538,8 @@ test("Qloo invocation launches Node directly with credentials only in the child 
   assert.equal(call.options.maxBuffer, 1024 * 1024);
   const childEnvironment = call.options.env as Record<string, string>;
   assert.equal(childEnvironment.QLOO_API_KEY, fixtureCredential);
-  assert.equal(childEnvironment.QLOO_BASE_URL, "https://api.qloo.com");
+  assert.equal(childEnvironment.QLOO_BASE_URL, "https://hackathon.api.qloo.com");
+  assert.equal(childEnvironment.QLOO_TRUSTED_BASE_URL, "https://hackathon.api.qloo.com");
   assert.deepEqual(result, harnessResult());
 });
 
@@ -580,7 +602,7 @@ test("Qloo invocation carries a synthetic credential through a real Node child e
     executions += 1;
     // Replace the harness entry point completely. This child imports no Qloo
     // code, reads no files, and only compares synthetic environment fixtures.
-    const probe = "process.stdout.write(JSON.stringify({fixtureReceived:process.env.QLOO_API_KEY===process.env.AFTERHOURS_EXPECTED_FIXTURE,officialEndpoint:process.env.QLOO_BASE_URL==='https://api.qloo.com'}))";
+    const probe = "process.stdout.write(JSON.stringify({fixtureReceived:process.env.QLOO_API_KEY===process.env.AFTERHOURS_EXPECTED_FIXTURE,assignedEndpoint:process.env.QLOO_BASE_URL==='https://hackathon.api.qloo.com'&&process.env.QLOO_TRUSTED_BASE_URL==='https://hackathon.api.qloo.com'}))";
     return execFile(executable, ["-e", probe], options, callback);
   }) as unknown as typeof execFile;
   const result = await invokeHarness(fixtureCredential, {
@@ -591,6 +613,6 @@ test("Qloo invocation carries a synthetic credential through a real Node child e
   assert.equal(result.exitCode, 0);
   assert.equal(result.processCode, null);
   assert.equal(result.timedOut, false);
-  assert.deepEqual(JSON.parse(result.stdout), { fixtureReceived: true, officialEndpoint: true });
+  assert.deepEqual(JSON.parse(result.stdout), { fixtureReceived: true, assignedEndpoint: true });
   assert.equal(result.stderr, "");
 });

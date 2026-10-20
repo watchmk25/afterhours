@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createSingleSearchFetch } from "../scripts/qloo-smoke-fetch.mjs";
 
-const search = "https://api.qloo.com/search?query=The+Guide&take=3&types=urn%3Aentity%3Abook";
+const search = "https://hackathon.api.qloo.com/search?query=The+Guide&take=3&types=urn%3Aentity%3Abook";
 
-test("Qloo guard permits the bounded official search once and preserves authentication options", async () => {
+test("Qloo guard permits the bounded assigned search once and preserves authentication options", async () => {
   const calls: unknown[][] = [];
   const guarded = createSingleSearchFetch(async (...args: unknown[]) => {
     calls.push(args);
@@ -40,7 +40,8 @@ test("Qloo guard rejects changed hosts, queries, limits, methods and extra param
   let calls = 0;
   const guarded = createSingleSearchFetch(async () => { calls += 1; return new Response(); });
   for (const target of [
-    search.replace("api.qloo.com", "example.invalid"),
+    search.replace("hackathon.api.qloo.com", "example.invalid"),
+    search.replace("https://hackathon.api.qloo.com", "https://api.qloo.com"),
     search.replace("take=3", "take=4"),
     search.replace("The+Guide", "Other"),
     search + "&take=3", search + "&other=1", search + "#fragment",
