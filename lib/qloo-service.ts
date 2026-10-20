@@ -5,7 +5,7 @@ import type {
   InterestKind, InterestReference, QlooContribution, QlooError, QlooInterest,
   QlooRankResponse, QlooSearchResponse,
 } from "./qloo-types.ts";
-import type { FilterInputs } from "./types.ts";
+import type { Book, FilterInputs } from "./types.ts";
 import { catalogueLanguages, filterBooks, validateFilters } from "./workspace.ts";
 
 const origin = "https://hackathon.api.qloo.com";
@@ -22,6 +22,14 @@ type ServiceOptions = {
   signingKey?: string | Uint8Array;
   now?: () => number;
   timeoutMs?: number;
+  minimumCandidates?: 1 | 2;
+};
+
+export type QlooPreparedRanking = {
+  filters: FilterInputs;
+  interests: QlooInterest[];
+  eligible: Book[];
+  supported: Book[];
 };
 
 class ServiceError extends Error {
@@ -149,6 +157,7 @@ function hasWarning(value: unknown): boolean {
 /** Pure server-domain factory. Tests inject a fetcher and never need a real key. */
 export function createQlooService({
   credential = "", fetcher = fetch, signingKey = randomBytes(32), now = Date.now, timeoutMs = 10_000,
+  minimumCandidates = 2,
 }: ServiceOptions = {}) {
   const key = credential.trim();
   const timeout = Number.isInteger(timeoutMs) && timeoutMs > 0 ? Math.min(timeoutMs, 10_000) : 10_000;
@@ -185,8 +194,28 @@ export function createQlooService({
       ...(claim.disambiguation === undefined ? {} : { disambiguation: claim.disambiguation }), reference: { token: reference.token } };
   };
 
-  async function request(path: "/search" | "/v2/insights", params: Record<string, string | number | boolean>): Promise<JsonRecord> {
+  function prepareRanking(value: unknown): QlooPreparedRanking {
+    const input = boundedInput(value);
+    if (!exactKeys(input, ["catalogueSource", "filters", "interests"]) || input.catalogueSource !== "sample") invalid("Live Qloo matching currently supports the sample catalogue only.");
+    const filters = validateFilterInput(input.filters);
+    if (!Array.isArray(input.interests) || input.interests.length < 1 || input.interests.length > 5) invalid("Confirm between one and five films or musicians.");
+    const unique = new Map<string, QlooInterest>();
+    for (const reference of input.interests) {
+      const interest = resolveReference(reference);
+      if (!unique.has(interest.entityId)) unique.set(interest.entityId, interest);
+    }
+    const eligible = filterBooks(SAMPLE_CATALOGUE, filters);
+    const supported = eligible.filter((book) => Object.hasOwn(SAMPLE_QLOO_MAPPINGS, book.id));
+    if (supported.length < minimumCandidates) throw new ServiceError(400, "INSUFFICIENT_SUPPORTED_BOOKS",
+      minimumCandidates === 1
+        ? "No eligible books have reviewed Qloo matches. Widen the filters or restore the sample catalogue."
+        : "At least two eligible books with reviewed Qloo matches are needed. Widen the filters to continue.");
+    return { filters, interests: [...unique.values()], eligible, supported };
+  }
+
+  async function request(path: "/search" | "/v2/insights", params: Record<string, string | number | boolean>, externalSignal?: AbortSignal): Promise<JsonRecord> {
     if (!key) throw new ServiceError(503, "QLOO_NOT_CONFIGURED", "Qloo is not configured on this server. Sample filtering and event templates remain available.");
+    if (externalSignal?.aborted) throw new ServiceError(499, "QLOO_CANCELLED", "The ranking request was cancelled.");
     const url = new URL(path, origin);
     for (const [name, value] of Object.entries(params)) url.searchParams.set(name, String(value));
     const controller = new AbortController();
@@ -203,7 +232,8 @@ export function createQlooService({
       return await Promise.race([(async () => {
         const response = await fetcher(url, {
           method: "GET", headers: { "X-Api-Key": key, Accept: "application/json" },
-          signal: controller.signal, cache: "no-store", redirect: "manual",
+          signal: externalSignal ? AbortSignal.any([controller.signal, externalSignal]) : controller.signal,
+          cache: "no-store", redirect: "manual",
         });
         if (!response.ok) {
           void response.body?.cancel().catch(() => {});
@@ -214,6 +244,7 @@ export function createQlooService({
         return body;
       })(), deadline]);
     } catch (error) {
+      if (externalSignal?.aborted) throw new ServiceError(499, "QLOO_CANCELLED", "The ranking request was cancelled.");
       if (error instanceof ServiceError) throw error;
       if (timedOut) throw new ServiceError(504, "QLOO_TIMEOUT", "Qloo did not respond within 10 seconds. No retry was attempted.");
       throw new ServiceError(502, "QLOO_UNAVAILABLE", "Qloo could not be reached. No retry or substitute result was used.");
@@ -223,6 +254,10 @@ export function createQlooService({
   }
 
   return {
+    prepareRank(value: unknown): QlooServiceResult<({ ok: true } & QlooPreparedRanking) | { ok: false; error: QlooError }> {
+      try { return { status: 200, body: { ok: true, ...prepareRanking(value) } }; }
+      catch (error) { return failure(error); }
+    },
     async search(value: unknown): Promise<QlooServiceResult<QlooSearchResponse>> {
       try {
         const input = boundedInput(value);
@@ -248,28 +283,16 @@ export function createQlooService({
       } catch (error) { return failure(error); }
     },
 
-    async rank(value: unknown): Promise<QlooServiceResult<QlooRankResponse>> {
+    async rank(value: unknown, signal?: AbortSignal): Promise<QlooServiceResult<QlooRankResponse>> {
       try {
-        const input = boundedInput(value);
-        if (!exactKeys(input, ["catalogueSource", "filters", "interests"]) || input.catalogueSource !== "sample") invalid("Live Qloo matching currently supports the sample catalogue only.");
-        const filters = validateFilterInput(input.filters);
-        if (!Array.isArray(input.interests) || input.interests.length < 1 || input.interests.length > 5) invalid("Confirm between one and five films or musicians.");
-        const unique = new Map<string, QlooInterest>();
-        for (const reference of input.interests) {
-          const interest = resolveReference(reference);
-          if (!unique.has(interest.entityId)) unique.set(interest.entityId, interest);
-        }
-        const interests = [...unique.values()];
-        const eligible = filterBooks(SAMPLE_CATALOGUE, filters);
-        const supported = eligible.filter((book) => Object.hasOwn(SAMPLE_QLOO_MAPPINGS, book.id));
-        if (supported.length < 2) throw new ServiceError(400, "INSUFFICIENT_SUPPORTED_BOOKS", "At least two eligible books with reviewed Qloo matches are needed. Widen the filters to continue.");
+        const { eligible, supported, interests } = prepareRanking(value);
         const mappings = new Map(supported.map((book) => [SAMPLE_QLOO_MAPPINGS[book.id].toUpperCase(), book.id]));
         const confirmed = new Set(interests.map((interest) => interest.entityId));
         const body = await request("/v2/insights", {
           "filter.type": "urn:entity:book", "filter.results.entities": [...mappings.keys()].join(","),
           "signal.interests.entities": [...confirmed].join(","), sort_by: "affinity",
           "feature.explainability": true, take: supported.length,
-        });
+        }, signal);
         const results = record(body.results);
         if (!results || !Array.isArray(results.entities) || results.entities.length > supported.length) schemaError();
         const returned = new Set<string>();

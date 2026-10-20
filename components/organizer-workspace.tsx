@@ -4,6 +4,7 @@ import { useState } from "react";
 import { SAMPLE_CATALOGUE } from "@/lib/catalogue";
 import type { Book, FilterInputs } from "@/lib/types";
 import type { QlooInterest, QlooRanking } from "@/lib/qloo-types";
+import type { EventProposal } from "@/lib/event-types";
 import {
   createDefaultInputs,
   createExampleInputs,
@@ -19,6 +20,7 @@ import { EligibleBooks } from "./eligible-books";
 import { EventOutline } from "./event-outline";
 import { Icon } from "./icons";
 import { QlooMatching } from "./qloo-matching";
+import { EventAgent } from "./event-agent";
 
 export function OrganizerWorkspace() {
   const [catalogue, setCatalogue] = useState<{
@@ -33,6 +35,8 @@ export function OrganizerWorkspace() {
   const [matchingEpoch, setMatchingEpoch] = useState(0);
   const [matchingRevision, setMatchingRevision] = useState(0);
   const [ranked, setRanked] = useState<{ scope: string; value: QlooRanking } | null>(null);
+  const [appliedProposal, setAppliedProposal] = useState<EventProposal | null>(null);
+  const [outlineRevision, setOutlineRevision] = useState(0);
   const languages = catalogueLanguages(catalogue.books);
   const eligibleBooks = filterBooks(catalogue.books, inputs.filters);
   const selectedBook = getEligibleSelection(selectedId, eligibleBooks);
@@ -48,6 +52,7 @@ export function OrganizerWorkspace() {
       filters: { ...current.filters, languages: catalogueLanguages(books) },
     }));
     setSelectedId(null);
+    setAppliedProposal(null);
     setRanked(null);
     setMatchingRevision((current) => current + 1);
     setNotice(
@@ -66,6 +71,7 @@ export function OrganizerWorkspace() {
       !getEligibleSelection(selectedId, filterBooks(catalogue.books, filters))
     ) {
       setSelectedId(null);
+      setAppliedProposal(null);
       setNotice(
         "Your selected book no longer meets the filters. Its outline has been cleared; choose another eligible book.",
       );
@@ -77,6 +83,7 @@ export function OrganizerWorkspace() {
   function loadInputs(example: boolean) {
     setInputs(example ? createExampleInputs(languages) : createDefaultInputs(languages));
     setSelectedId(null);
+    setAppliedProposal(null);
     setInterests([]);
     setRanked(null);
     setMatchingEpoch((current) => current + 1);
@@ -89,8 +96,18 @@ export function OrganizerWorkspace() {
   }
 
   function selectBook(id: string) {
+    if (id !== selectedId) setAppliedProposal(null);
     setSelectedId(id);
     setNotice("Book selected. Your editable event template is ready below.");
+  }
+
+  function applyProposal(context: string, proposal: EventProposal) {
+    const book = eligibleBooks.find((item) => item.id === proposal.selectedBookId);
+    if (context !== rankingScope || catalogue.source !== "sample" || invalid || !book || proposal.book.id !== book.id) return;
+    setSelectedId(book.id);
+    setAppliedProposal(proposal);
+    setOutlineRevision((current) => current + 1);
+    setNotice("Proposal applied. The selected book and editable event outline have been replaced.");
   }
 
   return (
@@ -128,8 +145,8 @@ export function OrganizerWorkspace() {
           <span className="banner-dot" />
           <p>
             <strong>{catalogue.source === "sample" ? "Sample inventory" : "Imported inventory"}</strong> — {catalogue.source === "sample"
-              ? "Live Qloo matching is available on request. AI planning is not connected."
-              : "Qloo matching supports the sample catalogue only. AI planning is not connected."}
+              ? "Qloo matching and Gemini planning are available on request."
+              : "Live matching and planning support the sample catalogue only."}
           </p>
           <span className="sample-badge">{catalogue.source === "sample" ? "SAMPLE DATA" : "SESSION ONLY"}</span>
         </div>
@@ -169,7 +186,7 @@ export function OrganizerWorkspace() {
           onRestore={() => replaceCatalogue(SAMPLE_CATALOGUE, null)}
         />
         <QlooMatching
-          key={matchingEpoch}
+          key={`matching:${matchingEpoch}`}
           source={catalogue.source}
           filters={inputs.filters}
           eligibleBooks={eligibleBooks}
@@ -185,6 +202,16 @@ export function OrganizerWorkspace() {
           onRankStart={() => setRanked(null)}
           onRanking={(scope, value) => setRanked({ scope, value })}
           onSelect={selectBook}
+        />
+        <EventAgent
+          key={`event-agent:${matchingEpoch}`}
+          source={catalogue.source}
+          filters={inputs.filters}
+          eligibleBooks={eligibleBooks}
+          invalid={invalid}
+          interests={interests}
+          contextScope={rankingScope}
+          onApply={applyProposal}
         />
         <div className="workspace-grid">
           <aside
@@ -220,7 +247,7 @@ export function OrganizerWorkspace() {
             >
               {notice}
             </p>
-            <EventOutline key={selectedBook?.id ?? "none"} book={selectedBook} />
+            <EventOutline key={`${selectedBook?.id ?? "none"}:${outlineRevision}`} book={selectedBook} proposal={appliedProposal} />
           </div>
         </div>
         <footer className="workspace-footer">
@@ -228,7 +255,7 @@ export function OrganizerWorkspace() {
             AfterHours<span>.</span>
           </span>
           <p>A space for books, people, and the conversations between them.</p>
-          <span>Organizer workspace · Qloo on request · AI planning unconnected</span>
+          <span>Organizer workspace · Qloo matching and Gemini planning on request</span>
         </footer>
       </main>
     </>

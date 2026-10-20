@@ -2,7 +2,9 @@
 
 A local organizer workspace for independent bookstores and book clubs. Start with illustrative sample books or import your inventory, explore books that fit practical limits, and adapt an event outline for your next gathering.
 
-**Live Qloo matching is available on explicit request for supported sample books. AI planning is not connected.** The default sample inventory is illustrative; imported inventory comes from your CSV and is not independently verified. Imported inventory does not support live matching yet.
+**Qloo matching and Gemini event planning are available on explicit request for supported sample books.** The default inventory is illustrative. Imported CSV inventory keeps local filtering and fixed event templates; live matching and planning do not support imported rows in this slice.
+
+The planner's controlled checks pass, but **live Gemini proposal/revision remains UNVERIFIED**: the first live request returned HTTP 400 before any Qloo call. No retry or fallback proposal was used. See [the actual verification and blocker](docs/event-agent.md).
 
 ## Run locally
 
@@ -13,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open the Local URL printed by Next.js, normally http://localhost:3000. Browsing, CSV import, filtering, and event templates need no environment file, API key, account, or external service. Live Qloo actions require the optional server credential described below. System fonts and locally drawn display covers keep the workspace independent of external assets.
+Open the Local URL printed by Next.js, normally http://localhost:3000. Browsing, CSV import, filtering, and fixed event templates need no environment file, API key, account, or external service. Live Qloo actions and Gemini proposals require the optional server credentials described below. System fonts and locally drawn display covers keep the workspace independent of external assets.
 
 For a production preview:
 
@@ -30,7 +32,7 @@ npm start
 - A bundled ten-book catalogue with identifiable title/author pairs. Prices, page counts, stock, edition languages, and display covers are illustrative fixtures, not retailer or publisher data.
 - Only in-stock books satisfying **all** selected constraints appear under **Eligible books**, ordered alphabetically by title. Limits are inclusive. An optional, separate Qloo result lists the returned ranking of eligible sample books with confirmed provider mappings; it never hides unassessed eligible books.
 - A helpful empty-results state with a Reset filters control that preserves audience favourites.
-- Select an eligible book to edit a fixed event template: title, 75-minute running order, generic discussion prompts, and organizer notes. It is explicitly **not AI-generated**.
+- Select an eligible book to edit a fixed event template: title, 75-minute running order, generic discussion prompts, and organizer notes. Manual templates are labelled **not AI-generated**. Applying a reviewed Gemini proposal explicitly replaces the draft and labels its source separately.
 - A selection that becomes ineligible is cleared together with its outline and does not return automatically when filters are widened. Filter changes that keep the book eligible preserve the draft. Switching books starts a fresh template.
 - **Load example** fills audience favourites and example filters (₹450, 300 pages, English when available, otherwise all active languages), clearing any selection/outline and Qloo interests/results while retaining the active catalogue. **Reset** clears favourites, selection/outline, and Qloo interests/results and restores ₹600, 400 pages, and all languages from the active catalogue.
 - A browser-local CSV import with validation, representative preview, explicit replacement confirmation, and a separate **Restore sample catalogue** action.
@@ -74,11 +76,36 @@ The five reviewed mappings are joined to stable sample IDs in `lib/qloo-sample.t
 
 Only explicit search and rank actions call the server. Each action makes at most one upstream GET: `/search` with movie/artist type and `take=3`, or `/v2/insights` with the server-derived eligible shortlist, confirmed signal IDs, affinity sorting, and explainability requested in that same response. Search names are bounded to 1–100 characters; at most five confirmed interests are accepted. The server uses built-in fetch, a ten-second timeout, 8 KiB request/1 MiB response limits, no redirects, no caching, and no automatic retries. It never imports the CLI harness or diagnostic scripts. Missing credentials, malformed inputs, unconfirmed/tampered interests, imported inventory, and insufficient candidates fail before any upstream request. Signed search confirmations expire after 30 minutes or a credential change; search again to renew them.
 
-Filters, confirmed interests, catalogue replacement, Load example, and Reset invalidate old rankings. Responses from older requests are ignored. Ranking never selects or switches a book, and an edited event outline survives while its selected book stays eligible. Invalid/cancelled CSV previews preserve the active inventory, selection, draft, and matching state. Confirming replacement clears the selected book and outline, preserves favourites, and invalidates ranking. AI planning remains unconnected; all event outlines are editable fixed templates. Errors and missing explanation fields are shown honestly, without substituting saved experiment results.
+Filters, confirmed interests, catalogue replacement, Load example, and Reset invalidate old rankings. Responses from older requests are ignored. Ranking never selects or switches a book, and an edited event outline survives while its selected book stays eligible. Invalid/cancelled CSV previews preserve the active inventory, selection, draft, and matching state. Confirming replacement clears the selected book and outline, preserves favourites, and invalidates ranking. Errors and missing explanation fields are shown honestly, without substituting saved experiment results.
 
 This local flow has no login, persistent storage, quota management, or public-service abuse controls. Keep its credential-enabled server local. This feature branch does not change the existing public deployment or configure hosted credentials.
 
 See [the live-matching verification record](docs/live-qloo-matching.md) for the automated checks, three-request live check, actual ordering/affinity values, and remaining limits. Recorded results are documentation only and are never imported into the runtime.
+
+## Bounded Gemini event planner
+
+Keep the existing `.env.local` file and its complete Qloo credential. Add `GEMINI_API_KEY` using your local editor, following the empty tracked `.env.example`; do not place a credential in a command or a `NEXT_PUBLIC_` variable. Optionally configure `GEMINI_MODEL` (default `gemini-3.8-flash`) and restart Next.js. The server explicitly passes **GEMINI_API_KEY** to the pinned official **@google/genai 2.30.0** SDK; it never selects `GOOGLE_API_KEY`, Vertex AI, or another provider automatically. This setup does not enable billing or change the hosted environment.
+
+1. Keep the sample catalogue active, confirm an audience preset or searched interests, and set the structured book filters.
+2. Describe the desired activities in **Event request** and choose **Event duration (minutes)**, a whole number from 15–180. Requests are bounded to 10–1000 characters. Avoid private participant details.
+3. Press **Generate proposal**. Gemini can call the single native `rank_eligible_books` tool. The tool takes **no arguments**: the server reuses the existing Qloo core, authoritative sample inventory, current filters, and confirmed entities. The model cannot supply IDs, inventory values, hosts, or relaxed constraints.
+4. Review the separate proposal preview: selected book, illustrative inventory facts, actual Qloo evidence/coverage, proposed title and rationale, timed activities, materials, and invitation. Generation does not select a book or overwrite any outline edits.
+5. Press **Apply proposal** only when ready to replace the selected book and all outline fields. The applied draft remains editable and is labelled as a Gemini proposal. Manually switching books still starts a fresh fixed template.
+6. Change a filter and press **Revise proposal**. The previous preview becomes stale and cannot be applied. A revision starts a fresh run with recomputed eligibility and a new Qloo ranking; the historical proposal is context, never current evidence. Unapplied revisions and failures preserve a still-eligible selected book and its edits.
+
+Each run permits **at most three Gemini requests, including one output repair, and one Qloo ranking request**. There are no automatic SDK/network retries, redirects, extra resolution calls, or stored-response fallbacks. The Interactions API uses `store:false`, low thinking, bounded outputs, a 20-second Gemini request deadline, Qloo's existing ten-second deadline, and a 60-second overall deadline. Native function-result continuation preserves call IDs and opaque signatures internally; hidden reasoning and raw provider errors are never shown. Only concise observed action statuses and request counts are exposed.
+
+The server validates the input, both credentials, confirmed interests, and eligible mapped books before any model request. A successful proposal requires a real tool result from that run; its selected book must belong to the current eligible ranked set, every cited evidence ID must match actual scores for that book, and positive integer agenda minutes must sum exactly to the requested duration. Factual book metadata and numerical evidence are joined from server-owned data, never trusted from model-supplied fields. Unknown/repeated tools or arguments are rejected. One invalid output may be repaired against the same evidence; an invalid repair fails honestly.
+
+Planning permits a single eligible mapped book (`take=1` is documented by Qloo); the separate manual matching panel retains its existing two-book minimum. For example, with the default page/language limits and a maximum price of INR 300, only The Guide is mapped among three eligible books. This is limited coverage, not evidence that the other books are absent from Qloo.
+
+Explicit conflicts between prose and structured price/page/duration limits, and requests to bypass filters, produce clarification. Gemini is also instructed to clarify uncertain instructions. The planner never silently changes a filter. The request prompt and conservative prose checks forbid quotations, URLs, obvious plot/author claims, factual inventory numbers, and attendance guarantees. Free-form language cannot be exhaustively fact-checked by these checks: proposed activities and invitation wording must be reviewed and are not Qloo explanations or verified literary facts.
+
+Changes to filters, interests, the request, or duration invalidate the preview, including a change back to the former values. Late responses are ignored; cancellation aborts local/server work where possible but cannot retract an upstream request already dispatched. Reset and Load example clear planner state. Invalid/cancelled CSV previews preserve it; confirming import or restoring samples invalidates it and follows the existing selection/outline rules. Imported catalogues cannot use live matching or planning.
+
+Routine Node and Chromium tests use controlled provider fixtures and make **zero live calls**. See [the event-agent verification record](docs/event-agent.md) for actual automated and live results. This feature is local and session-only; main, Vercel settings, and the public deployment are unchanged. There is no login, persistent storage, provider framework, or automatic application/publishing of a proposal.
+
+The protocol follows Google's current [function-calling](https://ai.google.dev/gemini-api/docs/function-calling), [structured-output](https://ai.google.dev/gemini-api/docs/structured-output), and [Gemini 3.8 Flash](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash) documentation. Provider access and quota depend on the configured credential; configuration alone does not verify a live run.
 
 ## Checks
 
@@ -217,6 +244,11 @@ The probe reuses the actual catalogue and default workspace filters, keeps local
 - `lib/qloo-service.ts` and `lib/qloo-server.ts`: validated native-fetch matching and server-only environment/request boundary.
 - `app/api/qloo/search/route.ts` and `app/api/qloo/rank/route.ts`: explicit server actions over the two allowed upstream paths.
 - `components/qloo-matching.tsx`: explicit search, entity confirmation, and live ranking with stale-response protection.
+- `components/event-agent.tsx`: explicit Generate/Revise, stale proposal preview, observed run activity, and Apply confirmation.
+- `lib/event-types.ts` and `lib/event-validation.ts`: bounded event/proposal contracts, clarification, factual/evidence joins, and agenda validation.
+- `lib/event-agent.ts`: the three-model/one-ranking native tool loop and overall cancellation/deadline.
+- `lib/gemini-provider.ts`: pinned official SDK transport, explicit key, fixed Google endpoint, bounded responses, and sanitized errors.
+- `lib/event-server.ts` and `app/api/event-agent/route.ts`: server-only credentials and HTTP boundary.
 - `tests/qloo-service.test.ts`: controlled transport tests; no live Qloo calls.
 - `e2e/qloo-matching.spec.ts`: fixture-driven browser matching, errors, preservation, mobile, and keyboard checks.
 - `components/catalogue-import.tsx`: local file reading, errors, preview/confirmation, and sample restoration.
@@ -235,6 +267,6 @@ The probe reuses the actual catalogue and default workspace filters, keeps local
 
 ## Limitations
 
-All inputs, confirmed interests, rankings, choices, and outline edits live only in the current page session and are lost on reload. Live matching covers only confidently mapped, eligible sample books and explicit confirmed film/musician signals. It does not resolve imported inventory, automatically interpret audience notes, or generate narrative cultural explanations. There is no LLM. Eligibility and affinity do not establish reader suitability or availability at a real shop.
+All inputs, confirmed interests, rankings, proposals, choices, and outline edits live only in the current page session and are lost on reload. Live matching and event planning cover only confidently mapped, eligible sample books and explicit confirmed film/musician signals. They do not resolve imported inventory or automatically interpret audience notes. Gemini proposes activities, not narrative cultural explanations or verified book analysis. Eligibility and affinity do not establish reader suitability or availability at a real shop.
 
-Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, broader entity resolution, and AI planning are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. The existing public deployment remains unchanged; hosted matching would require separate review and server configuration.
+Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, and broader entity resolution are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. The existing public deployment remains unchanged; hosted matching/planning would require separate review, access controls, and server configuration.

@@ -14,6 +14,7 @@
     "qloo:smoke": "node scripts/qloo-smoke.mjs"
   },
   "dependencies": {
+    "@google/genai": "2.30.0",
     "next": "16.4.2",
     "papaparse": "5.7.0",
     "react": "19.3.0",

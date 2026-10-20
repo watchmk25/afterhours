@@ -9,6 +9,12 @@ function requestFailure(status: number, message: string) {
   return Response.json({ ok: false, error: { code: "INVALID_REQUEST", message } }, { status, headers });
 }
 
+export function createRuntimeQlooService(minimumCandidates: 1 | 2 = 2) {
+  const credential = process.env.QLOO_API_KEY ?? "";
+  const signingKey = createHmac("sha256", credential).update("AfterHours interest references v1").digest();
+  return createQlooService({ credential, signingKey, minimumCandidates });
+}
+
 /** Next.js loads the server's ignored .env.local; credentials never enter client props. */
 export async function handleQlooRequest(request: Request, operation: "search" | "rank") {
   const requestOrigin = request.headers.get("origin");
@@ -45,11 +51,9 @@ export async function handleQlooRequest(request: Request, operation: "search" | 
   } finally {
     reader.releaseLock();
   }
-  const credential = process.env.QLOO_API_KEY ?? "";
   // Search and rank can run in separate server instances. Derive the private
   // signing key consistently without configuring or exposing another secret.
-  const signingKey = createHmac("sha256", credential).update("AfterHours interest references v1").digest();
-  const service = createQlooService({ credential, signingKey });
+  const service = createRuntimeQlooService();
   const result = await service[operation](input);
   return Response.json(result.body, { status: result.status, headers });
 }

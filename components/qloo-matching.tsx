@@ -147,7 +147,7 @@ export function QlooMatching({
       <p className="quiet qloo-intro">
         Confirm films or musicians, then ask Qloo to order supported eligible books.
         Searching and ranking send requests only when you press their buttons.
-        Audience notes below are unconfirmed text and are never used as Qloo signals. AI planning is not connected.
+        Audience notes below are unconfirmed text and are never used as Qloo signals. Gemini event planning is available separately on request.
       </p>
       {!sample && <p className="qloo-notice" role="status">Qloo matching supports the sample catalogue only. Imported inventory stays available with local filters and event templates. Restore the sample catalogue to use live matching.</p>}
       <div className="qloo-input-grid">

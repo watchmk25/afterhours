@@ -2,28 +2,34 @@
 
 import { useId, useState } from "react";
 import type { Book } from "@/lib/types";
+import type { EventProposal } from "@/lib/event-types";
 
 type OutlineDraft = {
   title: string;
   agenda: string;
   prompts: string;
   notes: string;
+  materials: string;
+  invitation: string;
 };
 
-function createTemplate(book: Book | null): OutlineDraft {
+function createTemplate(book: Book | null, proposal: EventProposal | null): OutlineDraft {
   return {
-    title: book ? `An evening with ${book.title}` : "",
-    agenda:
+    title: proposal?.eventTitle ?? (book ? `An evening with ${book.title}` : ""),
+    agenda: proposal ? proposal.agenda.map((item) => `${item.title} — ${item.minutes} minutes\n${item.activity}`).join("\n\n") :
       "Welcome and check-in — 10 minutes\nBook discussion — 40 minutes\nPersonal reflections — 15 minutes\nNext gathering and close — 10 minutes",
     prompts:
       "1. Which passage or moment stayed with you, and why?\n2. What question would you like to ask the group?\n3. Did your perspective change as you read?",
     notes: "",
+    materials: proposal?.materials.join("\n") ?? "",
+    invitation: proposal?.invitation ?? "",
   };
 }
 
-export function EventOutline({ book }: { book: Book | null }) {
+export function EventOutline({ book, proposal = null }: { book: Book | null; proposal?: EventProposal | null }) {
   const fieldId = useId();
-  const [draft, setDraft] = useState(() => createTemplate(book));
+  const applied = proposal?.selectedBookId === book?.id ? proposal : null;
+  const [draft, setDraft] = useState(() => createTemplate(book, applied));
 
   function updateField(field: keyof OutlineDraft, value: string) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -40,7 +46,7 @@ export function EventOutline({ book }: { book: Book | null }) {
           <p className="eyebrow">03 / MAKE A PLAN</p>
           <h2 id="outline-title">Event outline</h2>
         </div>
-        <span className="badge">Fixed template · not AI-generated</span>
+        <span className="badge">{applied ? "Gemini proposal · editable" : "Fixed template · not AI-generated"}</span>
       </div>
 
       {book ? (
@@ -53,6 +59,7 @@ export function EventOutline({ book }: { book: Book | null }) {
 
           <p className="quiet outline-session-note">
             Edits stay in this session. Switching books starts a fresh template.
+            {applied ? " Applying another proposal replaces this draft." : ""}
           </p>
 
           <div className="outline-grid">
@@ -73,7 +80,7 @@ export function EventOutline({ book }: { book: Book | null }) {
                 Running order
               </label>
               <p className="quiet outline-field-hint" id={`${fieldId}-timings`}>
-                75-minute starting point. Edit the timings to suit your gathering.
+                {applied ? `${applied.duration}-minute proposal.` : "75-minute starting point."} Edit the timings to suit your gathering.
               </p>
               <textarea
                 className="textarea"
@@ -90,7 +97,7 @@ export function EventOutline({ book }: { book: Book | null }) {
                 Discussion prompts
               </label>
               <p className="quiet outline-field-hint">
-                A few open questions to get the conversation started.
+                {applied ? "Optional generic prompts to use alongside the proposed activities." : "A few open questions to get the conversation started."}
               </p>
               <textarea
                 className="textarea"
@@ -100,6 +107,17 @@ export function EventOutline({ book }: { book: Book | null }) {
                 onChange={(event) => updateField("prompts", event.target.value)}
               />
             </div>
+
+            {applied && <>
+              <div className="field">
+                <label className="field-label" htmlFor={`${fieldId}-materials`}>Materials</label>
+                <textarea className="textarea" id={`${fieldId}-materials`} rows={5} value={draft.materials} onChange={(event) => updateField("materials", event.target.value)} />
+              </div>
+              <div className="field">
+                <label className="field-label" htmlFor={`${fieldId}-invitation`}>Invitation</label>
+                <textarea className="textarea" id={`${fieldId}-invitation`} rows={5} value={draft.invitation} onChange={(event) => updateField("invitation", event.target.value)} />
+              </div>
+            </>}
 
             <div className="field outline-full-width">
               <label className="field-label" htmlFor={`${fieldId}-notes`}>
