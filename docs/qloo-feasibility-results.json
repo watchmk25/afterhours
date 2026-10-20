@@ -1,0 +1,1075 @@
+{
+  "schemaVersion": 1,
+  "origin": "https://hackathon.api.qloo.com",
+  "sourceCommit": "4628b329fcf8626a592dedad591cca8dbfc79ad5",
+  "conductedOn": "2026-10-20",
+  "budget": 15,
+  "defaults": {
+    "maxPrice": "600",
+    "maxPages": "400",
+    "languages": [
+      "English",
+      "Hindi",
+      "Bengali"
+    ]
+  },
+  "guideReuse": {
+    "key": "the-guide",
+    "entityId": "DF4272D0-A6BA-445B-88DC-172A56B5D183",
+    "evidence": "Previously verified live: The Guide; 1958, R.K. Narayan."
+  },
+  "requests": [
+    {
+      "key": "the-namesake",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "The Namesake",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "godaan",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Godaan",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "the-blue-umbrella",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "The Blue Umbrella",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "a-suitable-boy",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "A Suitable Boy",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "pather-panchali",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Pather Panchali",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "the-palace-of-illusions",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "The Palace of Illusions",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "malgudi-days",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Malgudi Days",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "raag-darbari",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Raag Darbari",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "the-god-of-small-things",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "The God of Small Things",
+        "types": "urn:entity:book",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "audience-a-film",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Amélie",
+        "types": "urn:entity:movie",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "audience-a-artist",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Norah Jones",
+        "types": "urn:entity:artist",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "audience-b-film",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Interstellar",
+        "types": "urn:entity:movie",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "audience-b-artist",
+      "kind": "search",
+      "path": "/search",
+      "params": {
+        "query": "Hans Zimmer",
+        "types": "urn:entity:artist",
+        "take": 3
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "audience-a",
+      "kind": "ranking",
+      "path": "/v2/insights",
+      "params": {
+        "filter.type": "urn:entity:book",
+        "filter.results.entities": "5FE81158-6890-42CB-9F60-439C14174DB4,F74BAA1D-6C16-4EED-9BD7-304FB321A0A2,DF4272D0-A6BA-445B-88DC-172A56B5D183,CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+        "signal.interests.entities": "B7A0731F-EC92-496A-9C40-47D9770489B6,CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+        "feature.explainability": true,
+        "sort_by": "affinity",
+        "take": 4
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    },
+    {
+      "key": "audience-b",
+      "kind": "ranking",
+      "path": "/v2/insights",
+      "params": {
+        "filter.type": "urn:entity:book",
+        "filter.results.entities": "5FE81158-6890-42CB-9F60-439C14174DB4,F74BAA1D-6C16-4EED-9BD7-304FB321A0A2,DF4272D0-A6BA-445B-88DC-172A56B5D183,CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+        "signal.interests.entities": "057DA9D9-399B-437E-8BCA-A80E499125EF,37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+        "feature.explainability": true,
+        "sort_by": "affinity",
+        "take": 4
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "signal": null,
+      "outcome": "success"
+    }
+  ],
+  "searches": [
+    {
+      "key": "the-namesake",
+      "query": "The Namesake",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "The Namesake",
+          "entity_id": "CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2003, Jhumpa Lahiri",
+          "properties": {
+            "publication_year": 2003
+          }
+        },
+        {
+          "name": "The Namesake",
+          "entity_id": "530AE4F8-B1A1-469A-8CAA-F2866993DC79",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2012, Steven Parlato",
+          "properties": {
+            "publication_year": 2012
+          }
+        },
+        {
+          "name": "The Namesake: A Portrait of the Film Based on the Novel by Jhumpa Lahiri",
+          "entity_id": "DF3B40A6-070D-4351-AE28-9BC072CED341",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2006, Mira Nair",
+          "properties": {
+            "publication_year": 2006
+          }
+        }
+      ]
+    },
+    {
+      "key": "godaan",
+      "query": "Godaan",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "Godaan",
+          "entity_id": "691E457E-04BB-4B22-806F-6745F701094C",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1936, Munshi Premchand",
+          "properties": {
+            "publication_year": 1936
+          }
+        },
+        {
+          "name": "गोदान [Godaan] โคทาน",
+          "entity_id": "2042C96C-7E0A-4B0E-913E-95A726A59AB9",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1936, Munshi Premchand",
+          "properties": {
+            "publication_year": 1936
+          }
+        }
+      ]
+    },
+    {
+      "key": "the-blue-umbrella",
+      "query": "The Blue Umbrella",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "The Blue Umbrella",
+          "entity_id": "6DF42DB2-CFE7-4CB5-B3E7-8E102D599F67",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1980, Ruskin Bond",
+          "properties": {
+            "publication_year": 1980
+          }
+        },
+        {
+          "name": "The Blue Umbrella",
+          "entity_id": "0547CA40-91CE-4DD9-9A9E-D81180AFB5FB",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2009, Mike Mason",
+          "properties": {
+            "publication_year": 2009
+          }
+        },
+        {
+          "name": "The Blue Umbrella",
+          "entity_id": "51467D19-5DB2-4003-9734-61E68673668E",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1980, Ruskin Bond",
+          "properties": {
+            "publication_year": 1980
+          }
+        }
+      ]
+    },
+    {
+      "key": "a-suitable-boy",
+      "query": "A Suitable Boy",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "A Suitable Boy (A Bridge of Leaves, #1)",
+          "entity_id": "9A99C8EB-2C56-4447-9C18-EB46E750C402",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1993, Vikram Seth",
+          "properties": {
+            "publication_year": 1993
+          }
+        },
+        {
+          "name": "A Suitable Boy, Vol. 1",
+          "entity_id": "5B330D4A-B25A-4518-A381-D32CA94BA143",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1993, Vikram Seth",
+          "properties": {
+            "publication_year": 1993
+          }
+        },
+        {
+          "name": "A Suitable Boy, Vol. 2",
+          "entity_id": "8F212203-810A-4111-9776-DADAE73F4E85",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1995, Vikram Seth",
+          "properties": {
+            "publication_year": 1995
+          }
+        }
+      ]
+    },
+    {
+      "key": "pather-panchali",
+      "query": "Pather Panchali",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "Pather Panchali: Song of the Road",
+          "entity_id": "C8412519-DA61-49D8-8B7F-AA565EFC0110",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1929, Bibhutibhushan Bandyopadhyay",
+          "properties": {
+            "publication_year": 1929
+          }
+        },
+        {
+          "name": "Pather Panchali",
+          "entity_id": "21FEC03E-6D68-4C53-9698-4AB0916B0B2F",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1929, Bibhutibhushan Bandyopadhyay",
+          "properties": {
+            "publication_year": 1929
+          }
+        },
+        {
+          "name": "Pather Panchali (পথের পাঁচালী) (অপুর পাঁচালী #1)",
+          "entity_id": "A1B3351B-1CA1-43CB-86DD-FB1D2D07EC27",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1929, Bibhutibhushan Bandyopadhyay",
+          "properties": {
+            "publication_year": 1929
+          }
+        }
+      ]
+    },
+    {
+      "key": "the-palace-of-illusions",
+      "query": "The Palace of Illusions",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "The Palace of Illusions",
+          "entity_id": "E0FF55E0-1522-4438-A8FB-ADF0D62F7B5B",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2008, Chitra Banerjee Divakaruni",
+          "properties": {
+            "publication_year": 2008
+          }
+        },
+        {
+          "name": "The Palace of Illusions",
+          "entity_id": "13E086E8-52B3-49CD-BCC5-65C2B35DFDCF",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2014, Kim Addonizio",
+          "properties": {
+            "publication_year": 2014
+          }
+        },
+        {
+          "name": "The Beast of Buckingham Palace",
+          "entity_id": "1B35508C-FC73-4151-B5DB-7DDD325EB076",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2019, David Walliams",
+          "properties": {
+            "publication_year": 2019
+          }
+        }
+      ]
+    },
+    {
+      "key": "malgudi-days",
+      "query": "Malgudi Days",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "Malgudi Days",
+          "entity_id": "5FE81158-6890-42CB-9F60-439C14174DB4",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1943, R.K. Narayan",
+          "properties": {
+            "publication_year": 1943
+          }
+        },
+        {
+          "name": "R. K. Narayan: R. K. Narayan, Guide, Malgudi, Malgudi Days, Indian Thought Publications",
+          "entity_id": "3541D354-75B3-4F24-A4DE-C86172BDE7A2",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2010, Books LLC",
+          "properties": {
+            "publication_year": 2010
+          }
+        },
+        {
+          "name": "Short Story Collections by R. K. Narayan: Gods, Demons and Others, Malgudi Days, the Grandmother's Tale and Selected Stories",
+          "entity_id": "8CC82B0D-9918-442C-8A0F-E9223366CDAA",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2010, Books LLC",
+          "properties": {
+            "publication_year": 2010
+          }
+        }
+      ]
+    },
+    {
+      "key": "raag-darbari",
+      "query": "Raag Darbari",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "Raag Darbari",
+          "entity_id": "A7B13E71-8034-431F-9B6C-5D82FA8B7C5C",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1968, श्रीलाल शुक्ल",
+          "properties": {
+            "publication_year": 1968
+          }
+        },
+        {
+          "name": "Raag Darbari [Paperback] [Jul 20, 2012] Shrilal Shukla and Gillian Wright (Tr.)",
+          "entity_id": "2A87DFC9-A97D-4C55-898D-86AB79A07DE1",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1968, श्रीलाल शुक्ल",
+          "properties": {
+            "publication_year": 1968
+          }
+        },
+        {
+          "name": "Afternoon Raag",
+          "entity_id": "02C0382D-1EB7-4788-ACBF-84E5C849BEA8",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1993, Amit Chaudhuri",
+          "properties": {
+            "publication_year": 1993
+          }
+        }
+      ]
+    },
+    {
+      "key": "the-god-of-small-things",
+      "query": "The God of Small Things",
+      "type": "book",
+      "candidates": [
+        {
+          "name": "The God of Small Things",
+          "entity_id": "F74BAA1D-6C16-4EED-9BD7-304FB321A0A2",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "1997, Arundhati Roy",
+          "properties": {
+            "publication_year": 1997
+          }
+        },
+        {
+          "name": "The God of Small Things",
+          "entity_id": "D24F20FA-595D-4FC3-B3DE-10A94CA7DD86",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2000, Emilienne Baneth-Nouailhetas",
+          "properties": {
+            "publication_year": 2000
+          }
+        },
+        {
+          "name": "Arundhati Roy's The God of Small Things: A Reader's Guide",
+          "entity_id": "4F2230AF-F039-4928-834E-EDEF9150583A",
+          "types": [
+            "urn:entity:book"
+          ],
+          "disambiguation": "2002, Julie Mullaney",
+          "properties": {
+            "publication_year": 2002
+          }
+        }
+      ]
+    },
+    {
+      "key": "audience-a-film",
+      "query": "Amélie",
+      "type": "movie",
+      "candidates": [
+        {
+          "name": "Amélie",
+          "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+          "types": [
+            "urn:entity:movie"
+          ],
+          "disambiguation": "2001",
+          "properties": {
+            "release_year": 2001
+          }
+        },
+        {
+          "name": "Little Amélie or the Character of Rain",
+          "entity_id": "800A7037-0993-419C-A776-5734A17421C9",
+          "types": [
+            "urn:entity:movie"
+          ],
+          "disambiguation": "2025",
+          "properties": {
+            "release_year": 2025
+          }
+        },
+        {
+          "name": "Mountain Miracle",
+          "entity_id": "D98ED176-89F6-46E3-B726-B749C377383A",
+          "types": [
+            "urn:entity:movie"
+          ],
+          "disambiguation": "2017",
+          "properties": {
+            "release_year": 2017
+          }
+        }
+      ]
+    },
+    {
+      "key": "audience-a-artist",
+      "query": "Norah Jones",
+      "type": "artist",
+      "candidates": [
+        {
+          "name": "Norah Jones",
+          "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+          "types": [
+            "urn:entity:artist"
+          ],
+          "disambiguation": "Norah Jones"
+        },
+        {
+          "name": "Norah Jones & Peter Malick Group",
+          "entity_id": "6D1245F3-B53D-4D8E-920D-AAD1528930C1",
+          "types": [
+            "urn:entity:artist"
+          ],
+          "disambiguation": "Norah Jones & Peter Malick Group"
+        },
+        {
+          "name": "Charlie Hunter & Norah Jones",
+          "entity_id": "3FDE4BC2-7A3A-47C6-96B3-4C1410A8090C",
+          "types": [
+            "urn:entity:artist"
+          ],
+          "disambiguation": "Charlie Hunter & Norah Jones"
+        }
+      ]
+    },
+    {
+      "key": "audience-b-film",
+      "query": "Interstellar",
+      "type": "movie",
+      "candidates": [
+        {
+          "name": "Interstellar",
+          "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+          "types": [
+            "urn:entity:movie"
+          ],
+          "disambiguation": "2014",
+          "properties": {
+            "release_year": 2014
+          }
+        },
+        {
+          "name": "Interstellar: Nolan's Odyssey",
+          "entity_id": "B78D795F-8932-4BC9-BFDE-8A68C684D578",
+          "types": [
+            "urn:entity:movie"
+          ],
+          "disambiguation": "2014",
+          "properties": {
+            "release_year": 2014
+          }
+        },
+        {
+          "name": "Interstellar Wars",
+          "entity_id": "0A62BAA1-A0D4-4F0B-86CE-A889DD1AA697",
+          "types": [
+            "urn:entity:movie"
+          ],
+          "disambiguation": "2016",
+          "properties": {
+            "release_year": 2016
+          }
+        }
+      ]
+    },
+    {
+      "key": "audience-b-artist",
+      "query": "Hans Zimmer",
+      "type": "artist",
+      "candidates": [
+        {
+          "name": "Hans Zimmer",
+          "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+          "types": [
+            "urn:entity:artist"
+          ],
+          "disambiguation": "Hans Zimmer"
+        },
+        {
+          "name": "Hans Zimmer, Lisa Gerrard and Klaus Badelt",
+          "entity_id": "B95FFD08-D5E5-4DB8-9120-5EB9E82AA3F4",
+          "types": [
+            "urn:entity:artist"
+          ],
+          "disambiguation": "Hans Zimmer, Lisa Gerrard and Klaus Badelt"
+        },
+        {
+          "name": "Hans Zimmer and Junkie XL",
+          "entity_id": "4087381A-B2F0-43CD-88F6-83693CC14E11",
+          "types": [
+            "urn:entity:artist"
+          ],
+          "disambiguation": "Hans Zimmer and Junkie XL"
+        }
+      ]
+    }
+  ],
+  "rankings": [
+    {
+      "audience": "A",
+      "params": {
+        "filter.type": "urn:entity:book",
+        "filter.results.entities": "5FE81158-6890-42CB-9F60-439C14174DB4,F74BAA1D-6C16-4EED-9BD7-304FB321A0A2,DF4272D0-A6BA-445B-88DC-172A56B5D183,CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+        "signal.interests.entities": "B7A0731F-EC92-496A-9C40-47D9770489B6,CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+        "feature.explainability": true,
+        "sort_by": "affinity",
+        "take": 4
+      },
+      "entities": [
+        {
+          "name": "The God of Small Things",
+          "entity_id": "F74BAA1D-6C16-4EED-9BD7-304FB321A0A2",
+          "disambiguation": "1997, Arundhati Roy",
+          "popularity": 0.9973615852248773,
+          "query": {
+            "affinity": 0.7412713778821529,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                  "score": 0.6263674956034208
+                },
+                {
+                  "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                  "score": 0.3736325043965792
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The Namesake",
+          "entity_id": "CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+          "disambiguation": "2003, Jhumpa Lahiri",
+          "popularity": 0.9968787825211821,
+          "query": {
+            "affinity": 0.7179884704476631,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                  "score": 0.6219156325588995
+                },
+                {
+                  "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                  "score": 0.3780843674411006
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The Guide",
+          "entity_id": "DF4272D0-A6BA-445B-88DC-172A56B5D183",
+          "disambiguation": "1958, R.K. Narayan",
+          "popularity": 0.8726760869860871,
+          "query": {
+            "affinity": 0.6437325781964618,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                  "score": 0.5675018873784681
+                },
+                {
+                  "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                  "score": 0.43249811262153187
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Malgudi Days",
+          "entity_id": "5FE81158-6890-42CB-9F60-439C14174DB4",
+          "disambiguation": "1943, R.K. Narayan",
+          "popularity": 0.9632389941383672,
+          "query": {
+            "affinity": 0.6154423826453885,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                  "score": 0.5352634827269748
+                },
+                {
+                  "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                  "score": 0.4647365172730253
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "missing": [],
+      "query": {
+        "explainability": {
+          "signal.interests.entities": {
+            "effect_on_top3_recs": [
+              {
+                "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                "avg_score": 0.6052616718469294
+              },
+              {
+                "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                "avg_score": 0.39473832815307053
+              }
+            ],
+            "effect_on_top5_recs": [
+              {
+                "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                "avg_score": 0.5877621245669408
+              },
+              {
+                "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                "avg_score": 0.41223787543305923
+              }
+            ],
+            "effect_on_top10_recs": [
+              {
+                "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                "avg_score": 0.5877621245669408
+              },
+              {
+                "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                "avg_score": 0.41223787543305923
+              }
+            ],
+            "effect_on_all_recs": [
+              {
+                "entity_id": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+                "avg_score": 0.5877621245669408
+              },
+              {
+                "entity_id": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+                "avg_score": 0.41223787543305923
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "audience": "B",
+      "params": {
+        "filter.type": "urn:entity:book",
+        "filter.results.entities": "5FE81158-6890-42CB-9F60-439C14174DB4,F74BAA1D-6C16-4EED-9BD7-304FB321A0A2,DF4272D0-A6BA-445B-88DC-172A56B5D183,CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+        "signal.interests.entities": "057DA9D9-399B-437E-8BCA-A80E499125EF,37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+        "feature.explainability": true,
+        "sort_by": "affinity",
+        "take": 4
+      },
+      "entities": [
+        {
+          "name": "The God of Small Things",
+          "entity_id": "F74BAA1D-6C16-4EED-9BD7-304FB321A0A2",
+          "disambiguation": "1997, Arundhati Roy",
+          "popularity": 0.9973615852248773,
+          "query": {
+            "affinity": 0.6801410057905225,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                  "score": 0.5517437393200487
+                },
+                {
+                  "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                  "score": 0.4482562606799512
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The Namesake",
+          "entity_id": "CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+          "disambiguation": "2003, Jhumpa Lahiri",
+          "popularity": 0.9968787825211821,
+          "query": {
+            "affinity": 0.6662579354738624,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                  "score": 0.5699494420150627
+                },
+                {
+                  "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                  "score": 0.43005055798493735
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "The Guide",
+          "entity_id": "DF4272D0-A6BA-445B-88DC-172A56B5D183",
+          "disambiguation": "1958, R.K. Narayan",
+          "popularity": 0.8726760869860871,
+          "query": {
+            "affinity": 0.6414568420115073,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                  "score": 0.5049582846131861
+                },
+                {
+                  "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                  "score": 0.4950417153868138
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Malgudi Days",
+          "entity_id": "5FE81158-6890-42CB-9F60-439C14174DB4",
+          "disambiguation": "1943, R.K. Narayan",
+          "popularity": 0.9632389941383672,
+          "query": {
+            "affinity": 0.5714336093052628,
+            "explainability": {
+              "signal.interests.entities": [
+                {
+                  "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                  "score": 0.5039986350540354
+                },
+                {
+                  "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                  "score": 0.4960013649459647
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "missing": [],
+      "query": {
+        "explainability": {
+          "signal.interests.entities": {
+            "effect_on_top3_recs": [
+              {
+                "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                "avg_score": 0.5422171553160992
+              },
+              {
+                "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                "avg_score": 0.4577828446839008
+              }
+            ],
+            "effect_on_top5_recs": [
+              {
+                "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                "avg_score": 0.5306632077235656
+              },
+              {
+                "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                "avg_score": 0.46933679227643443
+              }
+            ],
+            "effect_on_top10_recs": [
+              {
+                "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                "avg_score": 0.5306632077235656
+              },
+              {
+                "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                "avg_score": 0.46933679227643443
+              }
+            ],
+            "effect_on_all_recs": [
+              {
+                "entity_id": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+                "avg_score": 0.5306632077235656
+              },
+              {
+                "entity_id": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+                "avg_score": 0.46933679227643443
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "stopped": false,
+  "shortlist": [
+    {
+      "localId": "malgudi-days",
+      "title": "Malgudi Days",
+      "entityId": "5FE81158-6890-42CB-9F60-439C14174DB4"
+    },
+    {
+      "localId": "the-god-of-small-things",
+      "title": "The God of Small Things",
+      "entityId": "F74BAA1D-6C16-4EED-9BD7-304FB321A0A2"
+    },
+    {
+      "localId": "the-guide",
+      "title": "The Guide",
+      "entityId": "DF4272D0-A6BA-445B-88DC-172A56B5D183"
+    },
+    {
+      "localId": "the-namesake",
+      "title": "The Namesake",
+      "entityId": "CE8065B9-1496-4B0D-B5A6-5D486C867A98"
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+[
+  {
+    "key": "the-namesake",
+    "entityId": "CE8065B9-1496-4B0D-B5A6-5D486C867A98",
+    "status": "resolved",
+    "evidence": "Unique exact title with book type and disambiguation 2003, Jhumpa Lahiri; other candidates have a different author or concern the film."
+  },
+  {
+    "key": "godaan",
+    "entityId": null,
+    "status": "unresolved",
+    "evidence": "Two distinct book IDs identify the same 1936 Munshi Premchand work; exact Latin title versus multilingual title does not establish a unique provider ID or edition."
+  },
+  {
+    "key": "the-blue-umbrella",
+    "entityId": null,
+    "status": "unresolved",
+    "evidence": "Two distinct IDs have the exact title, book type and 1980, Ruskin Bond disambiguation. No reliable tie-break metadata in this experiment."
+  },
+  {
+    "key": "a-suitable-boy",
+    "entityId": null,
+    "status": "unresolved",
+    "evidence": "Multiple 1993 Vikram Seth records describe a whole-work/series-labelled candidate and separate volumes. Sample inventory lacks authoritative edition identifiers; conservatively no provider ID accepted."
+  },
+  {
+    "key": "pather-panchali",
+    "entityId": null,
+    "status": "unresolved",
+    "evidence": "Three book IDs share 1929, Bibhutibhushan Bandyopadhyay; subtitle/translation and Bengali-title variants cannot be tied uniquely to inventory without edition metadata."
+  },
+  {
+    "key": "the-guide",
+    "entityId": "DF4272D0-A6BA-445B-88DC-172A56B5D183",
+    "status": "resolved",
+    "evidence": "Reused issuer-authenticated earlier live search: exact The Guide, book type and disambiguation 1958, R.K. Narayan. No new Guide request."
+  },
+  {
+    "key": "the-palace-of-illusions",
+    "entityId": "E0FF55E0-1522-4438-A8FB-ADF0D62F7B5B",
+    "status": "resolved",
+    "evidence": "Unique exact title with book type and disambiguation 2008, Chitra Banerjee Divakaruni; different-author same-title and unrelated-title candidates excluded."
+  },
+  {
+    "key": "malgudi-days",
+    "entityId": "5FE81158-6890-42CB-9F60-439C14174DB4",
+    "status": "resolved",
+    "evidence": "Unique exact title with book type and disambiguation 1943, R.K. Narayan. Other candidates are Books LLC compilations rather than the story collection."
+  },
+  {
+    "key": "raag-darbari",
+    "entityId": null,
+    "status": "unresolved",
+    "evidence": "Two IDs identify the Shrilal Shukla work (1968, श्रीलाल शुक्ल), including a translation-labelled candidate; source inventory lacks authoritative edition metadata. Conservatively no provider ID accepted."
+  },
+  {
+    "key": "the-god-of-small-things",
+    "entityId": "F74BAA1D-6C16-4EED-9BD7-304FB321A0A2",
+    "status": "resolved",
+    "evidence": "Unique exact title with book type and disambiguation 1997, Arundhati Roy; commentary and reader-guide authors differ."
+  },
+  {
+    "key": "audience-a-film",
+    "entityId": "B7A0731F-EC92-496A-9C40-47D9770489B6",
+    "status": "resolved",
+    "evidence": "Exact Amélie name, movie type, disambiguation and release_year 2001. Other returned films have different titles/years."
+  },
+  {
+    "key": "audience-a-artist",
+    "entityId": "CFB97CDA-1B2D-4F1A-B707-415E76AFC016",
+    "status": "resolved",
+    "evidence": "Exact solo Norah Jones artist; other candidates are collaboration/group artist entities."
+  },
+  {
+    "key": "audience-b-film",
+    "entityId": "057DA9D9-399B-437E-8BCA-A80E499125EF",
+    "status": "resolved",
+    "evidence": "Exact Interstellar name, movie type and release_year/disambiguation 2014; excludes the companion documentary and Interstellar Wars."
+  },
+  {
+    "key": "audience-b-artist",
+    "entityId": "37DB91E9-9EE1-4C98-AA01-0AF0C34274EC",
+    "status": "resolved",
+    "evidence": "Exact solo Hans Zimmer artist; other candidates are collaboration artist entities."
+  }
+]

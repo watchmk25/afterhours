@@ -175,6 +175,14 @@ The corrected assigned-origin check on 2026-10-20 made one live search, received
 
 Dependency triage on 2026-10-19 confirmed nine affected package entries (two moderate, seven high), arising from fourteen individual advisories in three transitive development packages. `npm audit --omit=dev --json` reported zero findings. See [the dependency findings and exposure assessment](docs/dependency-audit.md) for every advisory, installed version, path, and fix constraint. The published Qloo agent shrinkwrap prevents selecting the available `brace-expansion` and Undici patches, while `braces` has no published fix. Update previews made no changes; no overrides, forced fixes, or framework downgrades were applied. The harness remains a local diagnostic dependency and is not imported by the web app. Production-only audit results do not assess build tools, Node's bundled libraries, or separately downloaded tools.
 
+## Local Qloo feasibility experiment
+
+The separate, manually invoked `npm run qloo:feasibility` probe tests whether two fixed hypothetical film/music audiences can rank the same locally eligible sample inventory. It does not change the workspace or the one-request `npm run qloo` smoke check. See [the experiment report](docs/qloo-feasibility.md), [minimal sanitized responses and request ledger](docs/qloo-feasibility-results.json), and [reviewed entity resolutions](docs/qloo-feasibility-resolutions.json).
+
+`npm run qloo:feasibility -- verify` checks the saved experiment offline. With no argument the probe only prints usage. The explicit live `search` phase permits the fixed nine remaining book searches plus four audience searches, each capped at three candidates; after human review, `rank` permits at most two direct Insights requests. A persisted ledger and a per-child fetch guard cap the experiment at 15 requests, disallow redirects and retries, and stop on failed requests. Completed stages cannot be repeated; do not remove the ledger to retry this same experiment. Credentials use the existing ignored `.env.local` loader and fixed issuer-assigned hackathon origin in the child process only. Dependencies, global harness settings, UI, and hosting are unchanged.
+
+The probe reuses the actual catalogue and default workspace filters, keeps local inventory IDs separate from Qloo entity IDs, excludes unresolved books/seeds, validates returned shortlist membership, and retains aggregate/per-book explanation fields from the same response rather than making explanation follow-up calls. Recorded score fields are Qloo outputs, not probabilities or validated recommendation quality. Node tests use synthetic transports and make no Qloo requests.
+
 ## Structure
 
 - `app/`: Next.js App Router page, root metadata/layout, local icon, and global styles.

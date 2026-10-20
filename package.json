@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --test --test-isolation=none tests/*.test.ts",
     "test:e2e": "playwright test",
     "qloo": "node scripts/qloo-smoke.mjs",
+    "qloo:feasibility": "node --experimental-strip-types scripts/qloo-feasibility.mjs",
     "qloo:smoke": "node scripts/qloo-smoke.mjs"
   },
   "dependencies": {
