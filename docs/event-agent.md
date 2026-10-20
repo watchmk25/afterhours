@@ -69,8 +69,8 @@ are labelled as Gemini proposals requiring review, separate from Qloo scores.
 ## Automated verification
 
 - Lint, TypeScript checking, and the Next.js production build passed.
-- **177 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
-  and 15 actual-SDK transport fixture tests. Native function-result IDs/signatures,
+- **192 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
+  16 actual-SDK transport fixture tests, and 14 sanitized-diagnostic tests. Native function-result IDs/signatures,
   explicit key precedence, one-fetch SDK behavior, no retries, fresh INR 450→300
   eligibility, invalid book/evidence/agenda repair, budget limits, missing
   credentials, sanitized failures, cancellation, and deadlines are covered.
@@ -105,42 +105,80 @@ $env:PLAYWRIGHT_BASE_URL = 'http://localhost:3100'
 try { npm run test:e2e } finally { Remove-Item Env:PLAYWRIGHT_BASE_URL }
 ```
 
-## Live attempt and blocker
+## HTTP 400 investigation and correction (2026-10-20)
+
+The previous checkpoint's first live attempt returned HTTP 400, with one Gemini
+request and zero Qloo requests. Its adapter cancelled the error body before the
+SDK could read it, so that earlier response could not establish a cause.
+
+Before another request, actual pinned-SDK serialization was tested offline using
+the real event-loop input and an injected transport. It confirmed Developer API
+routing (`enterprise:false`, `vertexai:false`), `v1beta`, the configured
+`gemini-3.8-flash` model, the native function declaration, low thinking, and
+stateless history. There were no `generateContent` fields or first-turn
+structured-output options. The installed SDK types permit `auto` inside
+`allowed_tools`, but those types do not establish server acceptance.
+
+A single authorized diagnostic request recovered the actual native envelope:
+
+| Observed field | Sanitized value |
+|---|---|
+| HTTP status | 400 |
+| `error.code` | `invalid_request` |
+| `error.message` | `allowed_tools mode must be either ANY or VALIDATED.` |
+| Separate provider status, parameter path, reason details | Not supplied |
+
+This establishes the rejected configuration:
+`generation_config.tool_choice.allowed_tools.mode: "auto"`. It does not establish
+invalid credentials, unavailable model access, or a schema/thinking problem.
+The smallest correction uses documented plain `tool_choice: "auto"` on the
+first turn. Only `rank_eligible_books` is declared, so Gemini still chooses that
+native tool or clarification. A forced repair retains `allowed_tools.mode:"any"`;
+post-tool generation retains `"none"`. Model, API, credentials, function schema,
+grounding validation, retries, deadlines, and tool budgets are unchanged.
+
+Rejection bodies are now read under a **16 KiB** cap and the existing deadline.
+The adapter interprets the documented native `error.code/message` and includes
+numeric code/status or field violations/reasons only when actually present.
+Only a bounded, allowlisted summary reaches the server's `[AfterHours Gemini]`
+diagnostic log; public errors and draft-preservation behavior remain fixed.
+Configured and nested credential/header values, URLs, opaque tokens, full text
+steps, and organizer-request echoes are redacted before truncation. Raw bodies,
+SDK exceptions, stacks, headers, prompts, and opaque signatures are not logged.
+Malformed/oversized errors retain only HTTP status and a fixed explanation.
+Missing credentials make zero requests and emit no provider diagnostic.
+
+Fourteen focused offline checks cover native and actually supplied RPC envelopes,
+nested credentials, prompt echoes, truncation boundaries, bounded malformed
+errors, no retries, callback isolation, deadlines, and zero-request configuration
+failures. The real SDK serialization regression verifies plain first-turn auto;
+the agent regression verifies forced repair and post-tool choices separately.
+
+## Corrected live turn and remaining blocker
 
 The planned audience was the verified Example A pair, Amélie (2001) and Norah
-Jones, with default 400 pages/all sample languages. No search or provider
-preflight was performed.
+Jones, with default 400 pages/all sample languages. No entity searches or extra
+readiness probes were performed.
 
 | User turn | Intended constraints | Actual result | Gemini requests | Qloo requests | Proposed selection |
 |---|---|---|---|---|---|
-| A | 45-minute interactive event, INR 450 maximum | First native Gemini request returned **HTTP 400**; local API returned 502. Stopped before tool execution. | 1 | 0 | None |
+| Diagnostic | Same first-turn native request, before correction | **HTTP 400**, `invalid_request`; specific mode rejection above. No tool execution. | 1 | 0 | None |
+| A | 45-minute interactive event, INR 450 maximum | Corrected request hit the existing **20-second Gemini deadline**; local API returned 504, `GEMINI_DEADLINE`. No upstream HTTP status/body was received. | 1 | 0 | None |
 | B | Revise after changing price to INR 300 | **UNVERIFIED**: no valid first proposal existed to revise; no extra request was invented. | 0 | 0 | None |
 
-**Actual total: one Gemini request, zero Qloo requests.** There was no automatic
-retry, repair, tool execution, fallback proposal, changed selection, or applied
-outline. The actual trace contained one failed Gemini action. Consequently live
-authentication, native tool continuation, proposal generation, and revision are
-not verified by this attempt. Controlled tests establish behavior only against
-their synthetic providers.
+**This task's actual total: two Gemini attempts, zero Qloo requests**, excluding
+the earlier checkpoint's one failed request. The corrected run's actual trace
+contained one failed Gemini action: `Gemini did not complete within the request
+deadline.` No ranking, proposal, output repair, or Apply occurred. The live browser
+screenshot shows the selected Guide and existing title/notes still present.
+The revision was not attempted because there was no valid proposal to revise.
 
-The initial adapter classified the HTTP 400 as generic `GEMINI_BAD_RESPONSE`.
-Its fixed message was corrected offline to `GEMINI_REQUEST_REJECTED`, retaining
-the numeric upstream status. That correction was not used to repeat the call.
-The raw provider error body was deliberately not retained, so the specific
-rejection cause remains **unknown**; HTTP 400 does not establish an invalid key.
-
-An offline configuration audit found the effective credential came from ignored
-`.env.local`, matched its parsed value, had no unintended whitespace or detected
-placeholder/copied label, and was distinct from the Qloo credential. The model
-setting was `gemini-3.8-flash`. Current official docs and SDK serialization
-support the submitted native request fields; no concrete correction justifying
-a retry was identified. No credential values, prefixes, lengths, fingerprints,
-raw headers, provider errors, or environment dumps were printed.
-
-Next verification needs the provider's **non-secret error status/reason** or
-confirmation in Google AI Studio that this key/project can use the configured
-model and Interactions API. Do not send the credential or enable billing to
-work around this result. No speculative model/host/provider fallback was tried.
+The immediate configuration rejection is understood and corrected, but a timeout
+does not prove upstream acceptance/authentication or identify the reason for
+latency. The timeout and no-retry safeguards were retained and no further live
+probe was made. Both live proposals, fresh Qloo tool execution, native
+continuation, exact agenda totals, and live Apply remain **UNVERIFIED**.
+Controlled tests verify these contracts only with synthetic providers.
 
 ## Artifacts and remaining limits
 
@@ -153,6 +191,12 @@ work around this result. No speculative model/host/provider fallback was tried.
 - `artifacts/playwright/event-agent-live-stopped.png`: actual failed live UI.
 - `artifacts/playwright/event-agent-live-results.json`: minimal sanitized outcome
   and actual trace/counts. No credential or opaque signature is retained.
+- `artifacts/playwright/gemini-400-diagnostic.json`: this task's one diagnostic
+  request and sanitized native rejection evidence.
+- `artifacts/playwright/event-agent-fixed-results.json`: corrected turn's actual
+  trace, deadline failure, and total counts including the diagnostic.
+- `artifacts/playwright/event-agent-fixed-stopped.png`: corrected live UI with
+  the deadline error and preserved existing outline.
 
 Generated artifacts stay ignored. Desktop/390px and actual keyboard interactions
 are covered in Chromium; other browsers and physical devices are unverified.
@@ -163,6 +207,7 @@ website were not changed or deployed.
 Sources: Google's [native function calling](https://ai.google.dev/gemini-api/docs/function-calling),
 [structured output](https://ai.google.dev/gemini-api/docs/structured-output),
 [model capabilities](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash),
-[Interactions API](https://ai.google.dev/api/interactions-api), and
+[Interactions API](https://ai.google.dev/api/interactions-api),
+[native error envelope](https://ai.google.dev/gemini-api/docs/api-errors), and
 [troubleshooting](https://ai.google.dev/gemini-api/docs/troubleshooting);
 Qloo's [Insights contract](https://github.com/qloo/docs-public/blob/main/reference/insights-api-deep-dive.md).

@@ -120,7 +120,10 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
             input: history, system_instruction: instruction, tools: [tool],
             generation_config: {
               thinking_level: "low", max_output_tokens: 4096,
-              tool_choice: ranking ? "none" : { allowed_tools: { mode: repaired ? "any" : "auto", tools: ["rank_eligible_books"] } },
+              // allowed_tools accepts only any/validated. Plain auto preserves
+              // the first turn's option to ask for clarification; only one tool exists.
+              tool_choice: ranking ? "none" : repaired
+                ? { allowed_tools: { mode: "any", tools: ["rank_eligible_books"] } } : "auto",
             },
             ...(ranking ? { response_format: { type: "text" as const, mime_type: "application/json", schema: EVENT_OUTPUT_SCHEMA } } : {}),
           };

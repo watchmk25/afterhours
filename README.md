@@ -4,7 +4,7 @@ A local organizer workspace for independent bookstores and book clubs. Start wit
 
 **Qloo matching and Gemini event planning are available on explicit request for supported sample books.** The default inventory is illustrative. Imported CSV inventory keeps local filtering and fixed event templates; live matching and planning do not support imported rows in this slice.
 
-The planner's controlled checks pass, but **live Gemini proposal/revision remains UNVERIFIED**: the first live request returned HTTP 400 before any Qloo call. No retry or fallback proposal was used. See [the actual verification and blocker](docs/event-agent.md).
+The planner's controlled checks pass, but **live Gemini proposal/revision remains UNVERIFIED**. The initial HTTP 400 was traced to an unsupported `allowed_tools.mode: "auto"` and corrected to plain `tool_choice: "auto"`. The corrected live turn hit the existing 20-second deadline before any Qloo tool execution. See [the actual verification and blocker](docs/event-agent.md).
 
 ## Run locally
 

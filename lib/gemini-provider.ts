@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Interactions } from "@google/genai";
+import { summarizeGeminiError, type GeminiDiagnostic } from "./gemini-diagnostics.ts";
 
 // The pinned SDK exports this request shape as ParamsNonStreaming.
 export type GeminiTurn = Omit<
@@ -118,11 +119,13 @@ export function createGeminiProvider({
   model = "gemini-3.8-flash",
   fetcher = globalThis.fetch,
   timeoutMs = maximumDeadlineMs,
+  onDiagnostic,
 }: {
   apiKey: string;
   model?: string;
   fetcher?: typeof fetch;
   timeoutMs?: number;
+  onDiagnostic?: (diagnostic: GeminiDiagnostic) => void;
 }): GeminiProvider {
   return {
     async create(turn, signal) {
@@ -183,7 +186,34 @@ export function createGeminiProvider({
           checkStopped();
         }
         if (response.redirected || response.status !== 200) {
-          stopReading(response.body);
+          let payload: unknown;
+          // Retain only a redacted summary, not raw errors, headers or bodies.
+          // A rejection body has a smaller bound and the same whole-turn deadline.
+          try {
+            if (!response.redirected && response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() === "application/json") {
+              const body = await readBounded(response.body, 16 * 1024, controller.signal, checkStopped);
+              payload = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
+            } else stopReading(response.body);
+          } catch { checkStopped(); }
+          const privateValues = [apiKey, ...(typeof turn.input === "string" ? [turn.input] : [])];
+          function collectText(value: unknown, depth = 0) {
+            if (depth > 12 || !value || typeof value !== "object") return;
+            for (const [key, child] of Object.entries(value)) {
+              if ((key === "text" || key === "system_instruction") && typeof child === "string") {
+                privateValues.push(child);
+                // The planner embeds the organizer request inside a JSON text
+                // step. A provider may echo that field without its JSON wrapper.
+                try {
+                  const content: unknown = JSON.parse(child);
+                  if (isRecord(content) && typeof content.organizerRequest === "string") privateValues.push(content.organizerRequest);
+                } catch { /* Ordinary non-JSON text is already private above. */ }
+              }
+              else collectText(child, depth + 1);
+            }
+          }
+          collectText(turn);
+          const diagnostic = summarizeGeminiError(payload, response.status, privateValues);
+          try { onDiagnostic?.(diagnostic); } catch { /* Diagnostics cannot change the public failure. */ }
           throw errorForStatus(response.status);
         }
         if (response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {

@@ -281,6 +281,9 @@ test("a premature proposal must perform a fresh native tool call before its fina
   const result = await fixture.agent.run(value);
   assert(result.body.ok && result.body.result.status === "proposal");
   assert.deepEqual(result.body.usage, { geminiRequests: 3, qlooRequests: 1 });
+  assert.equal(fixture.geminiCalls[0].turn.generation_config?.tool_choice, "auto");
+  assert.deepEqual(fixture.geminiCalls[1].turn.generation_config?.tool_choice,
+    { allowed_tools: { mode: "any", tools: ["rank_eligible_books"] } });
   assert.equal(fixture.qlooCalls.length, 1);
   assert.equal(result.body.trace[1].action, "validation");
   assert.equal(result.body.trace[1].status, "failed");

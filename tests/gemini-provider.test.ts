@@ -8,6 +8,9 @@ import {
   GeminiProviderError,
 } from "../lib/gemini-provider.ts";
 import type { GeminiProviderErrorCode, GeminiTurn } from "../lib/gemini-provider.ts";
+import { createEventAgent } from "../lib/event-agent.ts";
+import { QLOO_PRESETS } from "../lib/qloo-sample.ts";
+import { createQlooService } from "../lib/qloo-service.ts";
 
 // All credentials, signatures, provider bodies, and transports here are synthetic.
 const fixtureKey = "afterhours-synthetic-gemini-key";
@@ -81,6 +84,62 @@ test("Gemini uses the actual pinned SDK's fixed native endpoint and explicit ser
   assert(!JSON.stringify(fake.bodies).includes(fixtureKey));
   assert.equal(result.output_text, '{"title":"Synthetic event"}');
   assert.deepEqual(result.steps, completed().steps);
+});
+
+test("the event agent's initial request serializes through the pinned Interactions SDK without generateContent fields", async () => {
+  const fake = stub(() => Response.json({ error: {
+    code: "invalid_request", message: "Synthetic diagnostic rejection.",
+  } }, { status: 400 }));
+  let qlooRequests = 0;
+  const qloo = createQlooService({ credential: "synthetic-qloo-key", minimumCandidates: 1,
+    signingKey: "synthetic-signing-key", fetcher: async () => {
+      qlooRequests += 1;
+      throw new Error("Unexpected Qloo transport invocation.");
+    } });
+  const agent = createEventAgent({
+    gemini: createGeminiProvider({ apiKey: fixtureKey, fetcher: fake.fetcher }),
+    qloo, geminiConfigured: true, qlooConfigured: true,
+  });
+  const filters = { maxPrice: "450", maxPages: "400", languages: ["English", "Hindi", "Bengali"] };
+  const result = await agent.run({ catalogueSource: "sample", filters,
+    interests: QLOO_PRESETS[0].interests.map(({ reference }) => structuredClone(reference)),
+    request: "Plan a welcoming interactive book event.", duration: 45, mode: "generate" });
+  assert.equal(result.body.ok, false);
+  assert.deepEqual(result.body.usage, { geminiRequests: 1, qlooRequests: 0 });
+  assert.equal(qlooRequests, 0);
+  assert.equal(fake.calls.length, 1);
+  assert.equal(fake.calls[0].url, "https://generativelanguage.googleapis.com/v1beta/interactions");
+  assert.equal(fake.calls[0].method, "POST");
+  assert.equal(fake.calls[0].headers.get("x-goog-api-key"), fixtureKey);
+  assert(!fake.calls[0].headers.has("authorization"));
+  const body = fake.bodies[0] as Record<string, unknown>;
+  assert.deepEqual(Object.keys(body).sort(), ["background", "generation_config", "input", "model",
+    "store", "stream", "system_instruction", "tools"]);
+  assert.equal(body.model, "gemini-3.8-flash");
+  assert.equal(body.store, false);
+  assert.equal(body.stream, false);
+  assert.equal(body.background, false);
+  assert.deepEqual(body.generation_config, { thinking_level: "low", max_output_tokens: 4096,
+    tool_choice: "auto" });
+  assert(!Object.hasOwn(body, "response_format"));
+  assert(!Object.hasOwn(body, "contents"));
+  assert(!Object.hasOwn(body, "config"));
+  const tools = body.tools as Record<string, unknown>[];
+  assert.equal(tools.length, 1);
+  assert.equal(tools[0].type, "function");
+  assert.equal(tools[0].name, "rank_eligible_books");
+  assert.deepEqual(tools[0].parameters, { type: "object", properties: {}, additionalProperties: false });
+  const history = body.input as Interactions.Step[];
+  assert.equal(history.length, 1);
+  assert.equal(history[0].type, "user_input");
+  assert(history[0].type === "user_input");
+  const content = history[0].content?.[0];
+  assert(content?.type === "text");
+  const organizerInput = JSON.parse(content.text);
+  assert.deepEqual(organizerInput.authoritativeFilters, filters);
+  assert.equal(organizerInput.durationMinutes, 45);
+  assert.equal(organizerInput.confirmedInterests.length, 2);
+  assert(!JSON.stringify(body).includes(fixtureKey));
 });
 
 test("Gemini explicit configuration ignores conflicting synthetic provider environment settings", async () => {
