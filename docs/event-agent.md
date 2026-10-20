@@ -43,8 +43,10 @@ stateless continuation; hidden reasoning is not exposed in the UI or reports.
 
 Request/proposal input is capped at 16 KiB; event text is 10–1000 characters.
 Gemini transport is capped at 128 KiB request/256 KiB response and 4096 output
-tokens, with a 20-second whole-response deadline. Qloo retains its 1 MiB body and
-ten-second deadline. A run has a 60-second overall deadline; reading the HTTP
+tokens, with up to a 60-second whole-response deadline for local validation. Each
+Gemini operation receives the smaller of that limit and the remaining run budget.
+Qloo retains its 1 MiB body and ten-second deadline, combined with the remaining
+run's abort signal. A run has a 150-second overall deadline; reading the HTTP
 input has a five-second deadline. Cancellation propagates to active transports
 and prevents further steps, but cannot retract a dispatched request.
 
@@ -69,8 +71,9 @@ are labelled as Gemini proposals requiring review, separate from Qloo scores.
 ## Automated verification
 
 - Lint, TypeScript checking, and the Next.js production build passed.
-- **192 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
-  16 actual-SDK transport fixture tests, and 14 sanitized-diagnostic tests. Native function-result IDs/signatures,
+- **199 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
+  16 actual-SDK transport fixture tests, 14 sanitized-diagnostic tests, and seven
+  mocked-clock deadline tests. Native function-result IDs/signatures,
   explicit key precedence, one-fetch SDK behavior, no retries, fresh INR 450→300
   eligibility, invalid book/evidence/agenda repair, budget limits, missing
   credentials, sanitized failures, cancellation, and deadlines are covered.
@@ -154,7 +157,7 @@ errors, no retries, callback isolation, deadlines, and zero-request configuratio
 failures. The real SDK serialization regression verifies plain first-turn auto;
 the agent regression verifies forced repair and post-tool choices separately.
 
-## Corrected live turn and remaining blocker
+## Earlier corrected live turn (checkpoint 09d28a4)
 
 The planned audience was the verified Example A pair, Amélie (2001) and Norah
 Jones, with default 400 pages/all sample languages. No entity searches or extra
@@ -166,7 +169,7 @@ readiness probes were performed.
 | A | 45-minute interactive event, INR 450 maximum | Corrected request hit the existing **20-second Gemini deadline**; local API returned 504, `GEMINI_DEADLINE`. No upstream HTTP status/body was received. | 1 | 0 | None |
 | B | Revise after changing price to INR 300 | **UNVERIFIED**: no valid first proposal existed to revise; no extra request was invented. | 0 | 0 | None |
 
-**This task's actual total: two Gemini attempts, zero Qloo requests**, excluding
+**That investigation's total: two Gemini attempts, zero Qloo requests**, excluding
 the earlier checkpoint's one failed request. The corrected run's actual trace
 contained one failed Gemini action: `Gemini did not complete within the request
 deadline.` No ranking, proposal, output repair, or Apply occurred. The live browser
@@ -180,6 +183,63 @@ probe was made. Both live proposals, fresh Qloo tool execution, native
 continuation, exact agenda totals, and live Apply remain **UNVERIFIED**.
 Controlled tests verify these contracts only with synthetic providers.
 
+## Deadline alignment and isolated probe (current verification)
+
+Offline tracing identifies the old provider wrapper's `20_000` ms timer as the
+observed cutoff, not browser cancellation or the overall agent timer. The pinned
+SDK receives both `httpOptions.timeout` and per-call `timeout_ms`. Its installed
+transport only creates an independent SDK timeout signal when no caller signal
+is supplied (`dist/node/index.mjs`, request construction around line 20315).
+This app supplies its own controller signal, so the wrapper owns the deadline.
+The previous artifact retained the timeout outcome, not a measured elapsed time.
+
+Local validation now aligns these layers:
+
+| Layer | Effective deadline and behavior |
+|---|---|
+| Gemini SDK settings and provider wrapper | At most 60,000 ms, reduced to the remaining run budget. One bounded request, including reading the body; no retries. |
+| Complete agent run | At most 150,000 ms across all model, ranking, repair, and validation stages. |
+| Qloo ranking | Unchanged 10,000 ms timer combined with the overall abort signal, so whichever budget expires first cancels it. |
+| Browser UI | No automatic fetch cutoff; explicit Cancel, input changes, and unmount still abort/ignore stale work. |
+| Local live verification helper | Explicit 170,000 ms response wait for each user turn, allowing the full run and local body/response overhead. Normal 45-second fixture-test limits do not govern this standalone helper. |
+
+Concise existing action traces now include `elapsedMs`, outcome, and an optional
+fixed deadline label: `gemini_request`, `sdk_http` (recognized SDK timeout only),
+`agent_run`, `qloo_request`, or `user_cancel`. No prompts, payloads, keys, request
+URLs, or hidden reasoning enter these timing fields. SDK and wrapper settings
+agree, and explicit caller cancellation takes precedence over a local timeout.
+The native model/API configuration is unchanged: Developer API `v1beta`,
+`gemini-3.8-flash`, `thinking_level:"low"`, 4096 output tokens, plain initial
+`tool_choice:"auto"`, and no initial final-response schema. Actual SDK serialized
+fields are asserted offline; unsupported `minimal` thinking was not introduced.
+
+Seven focused mocked-clock checks verify both caps, smaller remaining budgets
+across ranking/repair, Qloo's own and overall deadlines, cancellation labels,
+suppression of late work, timing bounds, and unchanged native serialization.
+They make zero live calls. Lint, TypeScript, the production build, and the full
+Chromium regression suite use controlled providers only.
+
+The one isolated live probe used the same credential loader (`@next/env` with
+production precedence), explicit trimmed server key, configured model, provider
+factory, API version, and actual captured ranking-tool declaration. Only the
+instruction/input was shortened to ask for a native ranking-function call; no
+final proposal schema was supplied. Qloo execution was disabled in this probe.
+
+| Stage | Measured elapsed | Actual outcome | Deadline fired |
+|---|---|---|---|
+| Isolated Gemini native tool-call probe | **7,284 ms** | HTTP **503**, native `error.code: service_unavailable`; provider explanation says the configured model is experiencing high demand. | None |
+| A: generate at INR 450, 45 minutes | Not attempted | **UNVERIFIED**: probe did not succeed. | None |
+| B: revise at INR 300 | Not attempted | **UNVERIFIED**: no valid first proposal exists. | None |
+| Explicit Apply | Not attempted | **UNVERIFIED** with live output. | None |
+
+**Current task total: one Gemini request, zero Qloo requests.** The last
+successful stage was receiving the upstream HTTP response; the failing stage was
+provider availability. No successful native interaction, function call, text
+output, ranking, proposal, repair, or Apply was observed. No unchanged request
+was repeated. HTTP 503 does not prove valid authentication or explain the earlier
+generation latency. The model and retries remain unchanged; live acceptance
+requires a later authorized attempt when provider availability permits it.
+
 ## Artifacts and remaining limits
 
 - `playwright-report/index.html`: complete automated browser report.
@@ -191,12 +251,19 @@ Controlled tests verify these contracts only with synthetic providers.
 - `artifacts/playwright/event-agent-live-stopped.png`: actual failed live UI.
 - `artifacts/playwright/event-agent-live-results.json`: minimal sanitized outcome
   and actual trace/counts. No credential or opaque signature is retained.
-- `artifacts/playwright/gemini-400-diagnostic.json`: this task's one diagnostic
+- `artifacts/playwright/gemini-400-diagnostic.json`: the prior investigation's one diagnostic
   request and sanitized native rejection evidence.
 - `artifacts/playwright/event-agent-fixed-results.json`: corrected turn's actual
   trace, deadline failure, and total counts including the diagnostic.
 - `artifacts/playwright/event-agent-fixed-stopped.png`: corrected live UI with
   the deadline error and preserved existing outline.
+- `artifacts/playwright/gemini-deadline-probe.json`: current isolated probe's
+  measured elapsed time, HTTP status, sanitized provider code/explanation, and
+  one-request count. No raw response or opaque model steps are retained.
+- `artifacts/playwright/probe-gemini-deadline.mjs`: manually invoked one-probe
+  helper, refusing a second attempt when its evidence file already exists.
+- `artifacts/playwright/verify-gemini-deadline.mjs`: prepared standalone two-turn
+  browser helper with a 170-second response wait; not run because the probe failed.
 
 Generated artifacts stay ignored. Desktop/390px and actual keyboard interactions
 are covered in Chromium; other browsers and physical devices are unverified.
@@ -205,6 +272,7 @@ remain local pending public access/quota controls. Main and the existing public
 website were not changed or deployed.
 
 Sources: Google's [native function calling](https://ai.google.dev/gemini-api/docs/function-calling),
+[supported thinking levels](https://ai.google.dev/gemini-api/docs/thinking),
 [structured output](https://ai.google.dev/gemini-api/docs/structured-output),
 [model capabilities](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash),
 [Interactions API](https://ai.google.dev/api/interactions-api),

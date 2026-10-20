@@ -60,7 +60,7 @@ function userStep(text: string): Interactions.Step {
 }
 
 /** One run only; injected transports let all routine tests remain offline. */
-export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigured, overallTimeoutMs = 60_000 }: {
+export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigured, overallTimeoutMs = 150_000 }: {
   gemini?: GeminiProvider;
   qloo: QlooService;
   geminiConfigured: boolean;
@@ -70,6 +70,16 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
   return {
     async run(value: unknown, callerSignal?: AbortSignal): Promise<AgentResult> {
       const trace: AgentAction[] = [];
+      let activeStage: { action: AgentAction["action"]; started: number } | null = null;
+      const startStage = (action: AgentAction["action"]) => { activeStage = { action, started: performance.now() }; };
+      const finishStage = (status: AgentAction["status"], detail: string, deadline?: AgentAction["deadline"]) => {
+        if (!activeStage) return;
+        trace.push({ action: activeStage.action, status, detail,
+          elapsedMs: Math.max(0, Math.round(performance.now() - activeStage.started)),
+          ...(deadline ? { deadline } : {}),
+        });
+        activeStage = null;
+      };
       const usage: EventUsage = { geminiRequests: 0, qlooRequests: 0 };
       const fail = (status: number, code: string, message: string, upstreamStatus?: number): AgentResult => ({ status, body: { ok: false, error: {
         code, message, ...(upstreamStatus === undefined ? {} : { upstreamStatus }),
@@ -91,7 +101,9 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
       const onCancel = () => controller.abort();
       callerSignal?.addEventListener("abort", onCancel, { once: true });
       if (callerSignal?.aborted) controller.abort();
-      const timeout = Math.max(1, Math.min(overallTimeoutMs, 60_000));
+      const timeout = Number.isFinite(overallTimeoutMs) && overallTimeoutMs > 0 ? Math.min(overallTimeoutMs, 150_000) : 150_000;
+      const runStarted = performance.now();
+      const remainingMs = () => Math.max(0, timeout - (performance.now() - runStarted));
       const timer = setTimeout(() => { expired = true; controller.abort(); }, timeout);
       const abortError = () => new AgentError(expired ? "RUN_TIMEOUT" : "RUN_CANCELLED",
         expired ? "The planning run reached its overall deadline. No proposal was applied." : "The planning run was cancelled. No proposal was applied.", expired ? 504 : 499);
@@ -100,7 +112,10 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
         abortListener = () => reject(abortError());
         controller.signal.addEventListener("abort", abortListener, { once: true });
       });
-      const checkActive = () => { if (controller.signal.aborted) throw abortError(); };
+      const checkActive = () => {
+        if (!controller.signal.aborted && remainingMs() <= 0) { expired = true; controller.abort(); }
+        if (controller.signal.aborted) throw abortError();
+      };
       const execute = async (): Promise<AgentResult> => {
         checkActive();
         const history: Interactions.Step[] = [userStep(JSON.stringify({
@@ -128,9 +143,10 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
             ...(ranking ? { response_format: { type: "text" as const, mime_type: "application/json", schema: EVENT_OUTPUT_SCHEMA } } : {}),
           };
           usage.geminiRequests += 1;
-          const response = await gemini.create(turn, controller.signal);
+          startStage("gemini");
+          const response = await gemini.create(turn, controller.signal, Math.min(60_000, remainingMs()));
           checkActive();
-          trace.push({ action: "gemini", status: "completed", detail: ranking ? "Gemini returned proposed event content for validation." : "Gemini reviewed the event request and available inventory tool." });
+          finishStage("completed", ranking ? "Gemini returned proposed event content for validation." : "Gemini reviewed the event request and available inventory tool.");
           if (!Array.isArray(response.steps) || response.steps.length > 32 || Buffer.byteLength(JSON.stringify(response.steps)) > 128 * 1024) throw new AgentError("MODEL_RESPONSE_INVALID", "Gemini returned an unsupported or oversized interaction.");
           if (response.steps.some((step) => step.type.endsWith("_call") && step.type !== "function_call")) {
             throw new AgentError("TOOL_CALL_REJECTED", "Gemini returned a tool operation that is not enabled for this planner.");
@@ -148,15 +164,16 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
             history.push(...response.steps);
             checkActive();
             usage.qlooRequests += 1;
+            startStage("rank_eligible_books");
             const result = await qloo.rank(rankInput, controller.signal);
             checkActive();
             if (!result.body.ok) {
-              trace.push({ action: "rank_eligible_books", status: "failed", detail: "The current inventory ranking could not be completed. No substitute ranking was used." });
+              finishStage("failed", "The current inventory ranking could not be completed. No substitute ranking was used.", result.body.error.code === "QLOO_TIMEOUT" ? "qloo_request" : undefined);
               return fail(result.status, result.body.error.code, result.body.error.message, result.body.error.upstreamStatus);
             }
             ranking = result.body;
             evidence = evidenceFrom(ranking);
-            trace.push({ action: "rank_eligible_books", status: "completed", detail: `Qloo assessed ${ranking.assessedCount} of ${ranking.eligibleCount} eligible sample books using the current filters and confirmed interests.` });
+            finishStage("completed", `Qloo assessed ${ranking.assessedCount} of ${ranking.eligibleCount} eligible sample books using the current filters and confirmed interests.`);
             if (!ranking.ranked.length || !evidence.length) return fail(422, "NO_RANKED_EVIDENCE", "Qloo returned no usable ranked-book evidence. No grounded proposal can be produced from this response.");
             const books = ranking.ranked.map((entry) => {
               const book = prepared.body.ok ? prepared.body.eligible.find((candidate) => candidate.id === entry.localId) : undefined;
@@ -180,15 +197,16 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
             output = JSON.parse(rawText);
           } catch { output = null; }
           const blankRanking: QlooRanking = { ranked: [], eligibleCount: 0, supportedCount: 0, assessedCount: 0, unassessed: [], interests: [], aggregate: [], explanationWarnings: [] };
+          startStage("validation");
           const validation = validateEventOutput(output, { ranking: ranking ?? blankRanking,
             eligibleBooks: prepared.body.ok ? prepared.body.eligible : [], duration: input.duration, evidence });
           if (validation.ok && (validation.output.status === "clarification" || ranking)) {
-            trace.push({ action: "validation", status: "completed", detail: validation.output.status === "proposal"
+            finishStage("completed", validation.output.status === "proposal"
               ? "The book, evidence references, field limits, and exact agenda duration passed server validation."
-              : "Clarification is needed before a proposal can be applied." });
+              : "Clarification is needed before a proposal can be applied.");
             return { status: 200, body: { ok: true, result: validation.output, trace, usage } };
           }
-          trace.push({ action: "validation", status: "failed", detail: "The proposed output did not satisfy the current evidence and event constraints." });
+          finishStage("failed", "The proposed output did not satisfy the current evidence and event constraints.");
           if (repaired || usage.geminiRequests >= 3) return fail(422, "PROPOSAL_INVALID", "Gemini's proposal did not pass validation after the allowed repair. Your outline is unchanged.");
           repaired = true;
           history.push(...response.steps);
@@ -204,11 +222,15 @@ export function createEventAgent({ gemini, qloo, geminiConfigured, qlooConfigure
         return await Promise.race([execute(), interrupted]);
       } catch (error) {
         const safe = controller.signal.aborted ? abortError() : error;
-        if (safe instanceof AgentError) return fail(safe.status, safe.code, safe.message);
+        if (safe instanceof AgentError) {
+          finishStage("failed", safe.message, safe.code === "RUN_TIMEOUT" ? "agent_run" : safe.code === "RUN_CANCELLED" ? "user_cancel" : undefined);
+          return fail(safe.status, safe.code, safe.message);
+        }
         if (safe instanceof GeminiProviderError) {
-          trace.push({ action: "gemini", status: "failed", detail: safe.message });
+          finishStage("failed", safe.message, safe.deadline);
           return fail(safe.code === "GEMINI_QUOTA" ? 429 : safe.code === "GEMINI_DEADLINE" ? 504 : 502, safe.code, safe.message, safe.upstreamStatus);
         }
+        finishStage("failed", "The planning stage could not complete safely.");
         return fail(502, "PLANNING_FAILED", "The planning run could not complete safely. No proposal was applied and no automatic retry was made.");
       } finally {
         clearTimeout(timer);

@@ -9,7 +9,7 @@ export type GeminiTurn = Omit<
 >;
 
 export type GeminiProvider = {
-  create(turn: GeminiTurn, signal: AbortSignal): Promise<Interactions.Interaction>;
+  create(turn: GeminiTurn, signal: AbortSignal, remainingMs?: number): Promise<Interactions.Interaction>;
 };
 
 export type GeminiProviderErrorCode =
@@ -39,11 +39,13 @@ const messages: Record<GeminiProviderErrorCode, string> = {
 export class GeminiProviderError extends Error {
   readonly code: GeminiProviderErrorCode;
   readonly upstreamStatus?: number;
+  readonly deadline?: "gemini_request" | "sdk_http";
 
-  constructor(code: GeminiProviderErrorCode, upstreamStatus?: number) {
+  constructor(code: GeminiProviderErrorCode, upstreamStatus?: number, deadline?: "gemini_request" | "sdk_http") {
     super(messages[code]);
     this.name = "GeminiProviderError";
     this.code = code;
+    if (deadline) this.deadline = deadline;
     if (Number.isInteger(upstreamStatus) && upstreamStatus! >= 100 && upstreamStatus! <= 599) {
       this.upstreamStatus = upstreamStatus;
     }
@@ -54,7 +56,7 @@ const origin = "https://generativelanguage.googleapis.com";
 const endpoint = "/v1beta/interactions";
 const maximumRequestBytes = 128 * 1024;
 const maximumResponseBytes = 256 * 1024;
-const maximumDeadlineMs = 20_000;
+const maximumDeadlineMs = 60_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -128,20 +130,23 @@ export function createGeminiProvider({
   onDiagnostic?: (diagnostic: GeminiDiagnostic) => void;
 }): GeminiProvider {
   return {
-    async create(turn, signal) {
+    async create(turn, signal, remainingMs = maximumDeadlineMs) {
       if (!apiKey.trim()) throw new GeminiProviderError("GEMINI_AUTH");
       if (!/^[a-zA-Z0-9._-]{1,100}$/.test(model)) throw new GeminiProviderError("GEMINI_MODEL_UNAVAILABLE");
       const controller = new AbortController();
       let expired = false;
       let dispatched = false;
-      const deadline = Number.isFinite(timeoutMs) && timeoutMs > 0
+      if (!Number.isFinite(remainingMs) || remainingMs <= 0) throw new GeminiProviderError("GEMINI_DEADLINE", undefined, "gemini_request");
+      const configuredDeadline = Number.isFinite(timeoutMs) && timeoutMs > 0
         ? Math.min(timeoutMs, maximumDeadlineMs) : maximumDeadlineMs;
+      const deadline = Math.min(configuredDeadline, remainingMs);
       const abortFromCaller = () => { controller.abort(); };
       signal.addEventListener("abort", abortFromCaller, { once: true });
       if (signal.aborted) controller.abort();
       const timer = setTimeout(() => { expired = true; controller.abort(); }, deadline);
       const stoppedError = () => new GeminiProviderError(
         signal.aborted ? "GEMINI_CANCELLED" : "GEMINI_DEADLINE",
+        undefined, signal.aborted ? undefined : "gemini_request",
       );
       const checkStopped = () => {
         if (controller.signal.aborted) throw stoppedError();
@@ -275,6 +280,9 @@ export function createGeminiProvider({
         let current: unknown = error;
         for (let depth = 0; depth < 5 && isRecord(current); depth++) {
           if (current instanceof GeminiProviderError) throw current;
+          if (current.name === "APIConnectionTimeoutError" || current.name === "RequestTimeoutError") {
+            throw new GeminiProviderError("GEMINI_DEADLINE", undefined, "sdk_http");
+          }
           current = current.cause;
         }
         throw new GeminiProviderError("GEMINI_BAD_RESPONSE");

@@ -51,6 +51,8 @@ export type AgentAction = {
   action: "gemini" | "rank_eligible_books" | "validation";
   status: "completed" | "failed";
   detail: string;
+  elapsedMs?: number;
+  deadline?: "gemini_request" | "sdk_http" | "agent_run" | "qloo_request" | "user_cancel";
 };
 
 export type EventUsage = { geminiRequests: number; qlooRequests: number };
