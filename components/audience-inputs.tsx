@@ -29,7 +29,7 @@ export function AudienceInputs({
         <span className="small-tag">Optional</span>
       </div>
       <p className="quiet audience-intro" id="audience-help">
-        What do your readers love? Add one favourite per line.
+        Audience notes: add one favourite per line. These are unconfirmed notes.
       </p>
       <div className="audience-fields">
         {groups.map(({ key, label, icon, placeholder }) => (
@@ -54,8 +54,9 @@ export function AudienceInputs({
       </div>
       <p className="input-note" id="audience-limit">
         <span className="note-dot" />
-        Collected for future taste matching. These inputs do not influence book
-        eligibility yet.
+        Free text is not sent to Qloo and never becomes a matching signal.
+        Confirm films or musicians in Live Qloo matching to use them for ranking.
+        These notes do not change eligibility.
       </p>
     </section>
   );

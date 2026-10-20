@@ -68,7 +68,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveTitle(/^AfterHours/);
   await expect(page.getByRole("heading", { level: 1, name: /Good books/ })).toBeVisible();
-  await expect(page.getByText("Sample mode — Qloo matching and AI planning are not connected.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Sample inventory — Live Qloo matching is available on request. AI planning is not connected.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Load example", exact: true })).toBeVisible();
   await expect(page.getByLabel("Max price per copy", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Max page count", { exact: true })).toBeVisible();

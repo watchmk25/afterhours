@@ -2,7 +2,7 @@
 
 A local organizer workspace for independent bookstores and book clubs. Start with illustrative sample books or import your inventory, explore books that fit practical limits, and adapt an event outline for your next gathering.
 
-**Qloo matching and AI planning are not connected.** The default sample inventory is illustrative; imported inventory comes from your CSV and is not independently verified.
+**Live Qloo matching is available on explicit request for supported sample books. AI planning is not connected.** The default sample inventory is illustrative; imported inventory comes from your CSV and is not independently verified. Imported inventory does not support live matching yet.
 
 ## Run locally
 
@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-Open the Local URL printed by Next.js, normally http://localhost:3000. No environment file, API key, account, or external service is needed. System fonts and locally drawn display covers keep the workspace independent of external assets.
+Open the Local URL printed by Next.js, normally http://localhost:3000. Browsing, CSV import, filtering, and event templates need no environment file, API key, account, or external service. Live Qloo actions require the optional server credential described below. System fonts and locally drawn display covers keep the workspace independent of external assets.
 
 For a production preview:
 
@@ -25,14 +25,14 @@ npm start
 ## Implemented
 
 - A responsive cream-and-green workspace with AfterHours branding and explicit sample-mode messaging.
-- Editable audience favourites grouped into books, films, and musicians, one favourite per line. These are collected for future taste matching and **do not influence eligibility** in this version.
+- Editable audience favourites grouped into books, films, and musicians, one favourite per line. These notes do not influence eligibility or ranking. Only the explicitly confirmed interests in the Qloo panel are sent as ranking signals.
 - Maximum price per copy in INR, maximum page count, and language filters derived from the active catalogue (English/Hindi/Bengali for the sample). Filtering updates immediately; invalid numeric inputs or an empty language selection produce field-specific guidance and no results.
 - A bundled ten-book catalogue with identifiable title/author pairs. Prices, page counts, stock, edition languages, and display covers are illustrative fixtures, not retailer or publisher data.
-- Only in-stock books satisfying **all** selected constraints appear under **Eligible books**, ordered alphabetically by title. Limits are inclusive. No affinity scores or personalized ranking are computed.
+- Only in-stock books satisfying **all** selected constraints appear under **Eligible books**, ordered alphabetically by title. Limits are inclusive. An optional, separate Qloo result lists the returned ranking of eligible sample books with confirmed provider mappings; it never hides unassessed eligible books.
 - A helpful empty-results state with a Reset filters control that preserves audience favourites.
 - Select an eligible book to edit a fixed event template: title, 75-minute running order, generic discussion prompts, and organizer notes. It is explicitly **not AI-generated**.
 - A selection that becomes ineligible is cleared together with its outline and does not return automatically when filters are widened. Filter changes that keep the book eligible preserve the draft. Switching books starts a fresh template.
-- **Load example** fills audience favourites and example filters (₹450, 300 pages, English when available, otherwise all active languages), clearing any selection/outline while retaining the active catalogue. **Reset** clears favourites and selection/outline and restores ₹600, 400 pages, and all languages from the active catalogue.
+- **Load example** fills audience favourites and example filters (₹450, 300 pages, English when available, otherwise all active languages), clearing any selection/outline and Qloo interests/results while retaining the active catalogue. **Reset** clears favourites, selection/outline, and Qloo interests/results and restores ₹600, 400 pages, and all languages from the active catalogue.
 - A browser-local CSV import with validation, representative preview, explicit replacement confirmation, and a separate **Restore sample catalogue** action.
 
 ## Import your catalogue
@@ -55,11 +55,30 @@ Papa Parse **5.7.0** handles CSV fields, with strict quote validation before par
 
 Uploading creates a preview with the total count and the first five books (or all books for a smaller file). The active catalogue, selected book, and edited outline remain unchanged until **Replace catalogue** is clicked. Invalid files and **Cancel import** preserve all three. The confirmation notice explains that replacement clears the selection and event outline while retaining audience favourites. Numeric filter limits are also retained; all languages from the new catalogue are initially selected.
 
-Imported rows receive unique `local-import-` UUIDs, including repeated title/author rows. These identify local catalogue records and are separate from any future Qloo entity ID. Reimporting creates fresh IDs. Imported books use the same in-stock, inclusive price/page, language, and alphabetical filtering, and the same editable fixed event template as samples.
+Imported rows receive unique `local-import-` UUIDs, including repeated title/author rows. These identify local catalogue records and are separate from Qloo entity IDs. Reimporting creates fresh IDs. Imported books use the same in-stock, inclusive price/page, language, and alphabetical filtering, and the same editable fixed event template as samples. Sample mappings are never applied to imported rows, even when titles match.
 
 **Reset** retains imported inventory while clearing favourites, selection, and outline and restoring default numeric limits/all active languages. **Reset filters** preserves favourites and inventory. **Restore sample catalogue** switches back to the ten fixtures, selects all sample languages, clears selection/outline, and preserves favourites and numeric limits. These actions are distinct from cancelling an unconfirmed import.
 
 Inventory, inputs, selections, and outline edits are session-only. Reloading returns to the sample catalogue and default workspace; nothing is persisted. No matching, affinity, cultural explanation, or AI planning is introduced by import.
+
+## Live Qloo matching (sample catalogue only)
+
+Copy `.env.example` to `.env.local` only if the latter does not already exist, then set `QLOO_API_KEY` in your local editor. Restart the local Next.js server after changing it. Do not paste credentials into commands, screenshots, logs, or tracked files, and never use a `NEXT_PUBLIC_` variable. Next.js loads its normal server environment: an inherited process value takes precedence over `.env.local`; the runtime does not read private harness settings. The assigned upstream is fixed to `https://hackathon.api.qloo.com` with `X-Api-Key` authentication; a caller cannot supply another origin or mapping.
+
+1. Keep the sample catalogue active and set the normal stock, price, page, and language constraints.
+2. Choose **Example A: Amélie + Norah Jones** or **Example B: Interstellar + Hans Zimmer** to confirm the verified hypothetical interests. These are examples, not inferred audience profiles.
+3. Alternatively, choose Film or Musician, enter a name, and press **Search Qloo**. Inspect up to three returned candidates, select the intended entity, then press **Confirm interest**. A name typed in the search box or the original favourites fields is never an implicit signal. Remove any confirmed interest that should not influence the ranking.
+4. Press **Rank with Qloo**. The panel shows the exact confirmed interests used, actual returned book order, available affinity and numerical interest-contribution fields, and coverage. Scores are not probabilities, and numerical contributions do not establish causal explanations or reader satisfaction.
+
+The five reviewed mappings are joined to stable sample IDs in `lib/qloo-sample.ts`, with provenance in [the feasibility resolutions](docs/qloo-feasibility-resolutions.json). Under default filters, **four of seven eligible books** have confirmed mappings: Malgudi Days, The God of Small Things, The Guide, and The Namesake. The Palace of Illusions is mapped but out of stock. The other eligible books remain browsable and selectable with an unassessed label; unresolved mappings do not mean that a book is absent from Qloo. At least two eligible mapped books and one confirmed interest are needed to rank. Imported CSV inventory remains fully usable for filtering and templates, but cannot be ranked with these sample mappings.
+
+Only explicit search and rank actions call the server. Each action makes at most one upstream GET: `/search` with movie/artist type and `take=3`, or `/v2/insights` with the server-derived eligible shortlist, confirmed signal IDs, affinity sorting, and explainability requested in that same response. Search names are bounded to 1–100 characters; at most five confirmed interests are accepted. The server uses built-in fetch, a ten-second timeout, 8 KiB request/1 MiB response limits, no redirects, no caching, and no automatic retries. It never imports the CLI harness or diagnostic scripts. Missing credentials, malformed inputs, unconfirmed/tampered interests, imported inventory, and insufficient candidates fail before any upstream request. Signed search confirmations expire after 30 minutes or a credential change; search again to renew them.
+
+Filters, confirmed interests, catalogue replacement, Load example, and Reset invalidate old rankings. Responses from older requests are ignored. Ranking never selects or switches a book, and an edited event outline survives while its selected book stays eligible. Invalid/cancelled CSV previews preserve the active inventory, selection, draft, and matching state. Confirming replacement clears the selected book and outline, preserves favourites, and invalidates ranking. AI planning remains unconnected; all event outlines are editable fixed templates. Errors and missing explanation fields are shown honestly, without substituting saved experiment results.
+
+This local flow has no login, persistent storage, quota management, or public-service abuse controls. Keep its credential-enabled server local. This feature branch does not change the existing public deployment or configure hosted credentials.
+
+See [the live-matching verification record](docs/live-qloo-matching.md) for the automated checks, three-request live check, actual ordering/affinity values, and remaining limits. Recorded results are documentation only and are never imported into the runtime.
 
 ## Checks
 
@@ -75,6 +94,7 @@ Then run the independent suites:
 ```sh
 npm run lint
 npm test
+npx tsc --noEmit
 npm run test:e2e
 npm run build
 ```
@@ -83,7 +103,7 @@ npm run build
 
 `npm run test:e2e` runs only `e2e/*.spec.ts`, using pinned Playwright Test 1.64.1 and its own isolated Chromium browser. It does not connect to Brave or alter Windows Computer Use safeguards. Each test starts in a fresh browser context; there is one worker and no automatic retries.
 
-The six original workspace browser tests remain unchanged and cover:
+The six original workspace browser journeys retain their behavior assertions (the banner copy now accurately describes optional live matching) and cover:
 
 1. Load example: exactly Malgudi Days, The Blue Umbrella, and The Guide, with English, ₹450, and 300 pages.
 2. Select The Guide, edit title and notes, then lower the price limit to ₹400 without switching books; selection and edits persist.
@@ -130,6 +150,8 @@ CLI deployments use the tracked `.vercelignore` to exclude actual environment fi
 - `playwright-report/index.html`: HTML report, including the mobile screenshot attachment. Open with `npx playwright show-report`.
 - `test-results/results.json`: machine-readable results.
 - `test-results/<mobile-test-name>/afterhours-mobile-390.png`: full-page mobile capture on every mobile test run, including failed layout checks.
+- `test-results/<qloo-mobile-test-name>/qloo-ranked-workspace-mobile-390.png`: controlled matching, eligible shelf, and edited outline at 390px.
+- `artifacts/playwright/qloo-live-desktop.png` and `qloo-live-mobile-390.png`: locally retained screenshots from the three-request live verification; no credentials or headers are captured.
 - `test-results/<failed-test-name>/test-failed-1.png` and `trace.zip`: retained failure screenshot and trace. Inspect traces with `npx playwright show-trace <path-to-trace.zip>`.
 - `artifacts/playwright/`: retained screenshots and the original failure trace from the visual review during this setup.
 
@@ -137,7 +159,7 @@ Generated reports and artifacts are ignored by Git and ESLint. Playwright replac
 
 ## Optional Qloo connection smoke check
 
-This is a manually invoked, trusted local diagnostic. The sample workspace does not call it and its eligibility, templates, and sample-mode notice are unchanged. Follow the official [hackathon kit](https://github.com/qloo/qloo-hackathon-kit), [API access requirements](https://github.com/qloo/qloo-hackathon-kit/blob/main/docs/API_ACCESS.md), and [CLI workflow](https://github.com/qloo/qloo-hackathon-kit/blob/main/starter/cli-workflow/README.md). Use an individually issued event credential and confirm the event quota, expiry, and support contact with the organizers.
+This is a manually invoked, trusted local diagnostic, separate from the application's native-fetch integration. The workspace never invokes it; the diagnostic and its one-request contract are unchanged. Follow the official [hackathon kit](https://github.com/qloo/qloo-hackathon-kit), [API access requirements](https://github.com/qloo/qloo-hackathon-kit/blob/main/docs/API_ACCESS.md), and [CLI workflow](https://github.com/qloo/qloo-hackathon-kit/blob/main/starter/cli-workflow/README.md). Use an individually issued event credential and confirm the event quota, expiry, and support contact with the organizers.
 
 `npm ci` installs the pinned official `@qloo/qloo-harness` 0.1.26 development dependency locally; a global installation and a model-provider account are unnecessary. Node.js 24 LTS meets the harness's minimum version. Its CLI help can be inspected without making API requests:
 
@@ -191,6 +213,12 @@ The probe reuses the actual catalogue and default workspace filters, keeps local
 - `lib/catalogue.ts`: local catalogue fixtures with local slug IDs.
 - `lib/catalogue-import.ts`: bounded, strict, atomic CSV parsing and validation with Papa Parse.
 - `lib/workspace.ts`: validation, filtering, default/example inputs, and selection helpers.
+- `lib/qloo-types.ts` and `lib/qloo-sample.ts`: bounded application contracts and reviewed sample/interest identities.
+- `lib/qloo-service.ts` and `lib/qloo-server.ts`: validated native-fetch matching and server-only environment/request boundary.
+- `app/api/qloo/search/route.ts` and `app/api/qloo/rank/route.ts`: explicit server actions over the two allowed upstream paths.
+- `components/qloo-matching.tsx`: explicit search, entity confirmation, and live ranking with stale-response protection.
+- `tests/qloo-service.test.ts`: controlled transport tests; no live Qloo calls.
+- `e2e/qloo-matching.spec.ts`: fixture-driven browser matching, errors, preservation, mobile, and keyboard checks.
 - `components/catalogue-import.tsx`: local file reading, errors, preview/confirmation, and sample restoration.
 - `public/catalogue-template.csv`: downloadable required-column template with an illustrative row.
 - `tests/workspace.test.ts`: automated domain behavior checks.
@@ -203,10 +231,10 @@ The probe reuses the actual catalogue and default workspace filters, keeps local
 - `scripts/qloo-smoke-fetch.mjs`: diagnostic-only one-request and no-redirect guard.
 - `tests/qloo-smoke.test.ts`: offline diagnostic safety and output checks.
 - `tests/qloo-smoke-fetch.test.ts`: offline request-budget checks with synthetic transports.
-- `.env.example`: empty local diagnostic credential placeholder.
+- `.env.example`: empty server-only credential placeholder for matching and local diagnostics.
 
 ## Limitations
 
-All inputs, choices, and outline edits live only in the current page session and are lost on reload. The workspace has no runtime API calls, Qloo IDs, taste matches, cultural explanations, LLM-generated content, or invented API responses. The optional local smoke check does not connect Qloo to the workspace. Eligibility does not establish reader suitability or availability at a real shop.
+All inputs, confirmed interests, rankings, choices, and outline edits live only in the current page session and are lost on reload. Live matching covers only confidently mapped, eligible sample books and explicit confirmed film/musician signals. It does not resolve imported inventory, automatically interpret audience notes, or generate narrative cultural explanations. There is no LLM. Eligibility and affinity do not establish reader suitability or availability at a real shop.
 
-Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, Qloo matching, and AI planning are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. Hosting the app does not enable any of these integrations or persistence.
+Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, broader entity resolution, and AI planning are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. The existing public deployment remains unchanged; hosted matching would require separate review and server configuration.
