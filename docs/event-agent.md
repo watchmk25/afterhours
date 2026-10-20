@@ -71,9 +71,9 @@ are labelled as Gemini proposals requiring review, separate from Qloo scores.
 ## Automated verification
 
 - Lint, TypeScript checking, and the Next.js production build passed.
-- **199 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
+- **208 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
   16 actual-SDK transport fixture tests, 14 sanitized-diagnostic tests, and seven
-  mocked-clock deadline tests. Native function-result IDs/signatures,
+  mocked-clock deadline tests and nine response-contract checks. Native function-result IDs/signatures,
   explicit key precedence, one-fetch SDK behavior, no retries, fresh INR 450→300
   eligibility, invalid book/evidence/agenda repair, budget limits, missing
   credentials, sanitized failures, cancellation, and deadlines are covered.
@@ -240,7 +240,7 @@ was repeated. HTTP 503 does not prove valid authentication or explain the earlie
 generation latency. The model and retries remain unchanged; live acceptance
 requires a later authorized attempt when provider availability permits it.
 
-## Explicit Gemini 3.6 Flash verification (current attempt)
+## Earlier Gemini 3.6 Flash probe (checkpoint 6d7401e)
 
 At the user's request, only `GEMINI_MODEL` was changed in ignored `.env.local`
 to **`gemini-3.6-flash`**. All other parsed settings were compared internally and
@@ -277,7 +277,7 @@ the corresponding probe to succeed before it can send either user turn.
 | B: revise, INR 300 | Same configured model | Not attempted | **UNVERIFIED**: no valid first proposal exists. | 0 |
 | Preview and explicit Apply | Same configured model | Not attempted | **UNVERIFIED** with live output. | 0 |
 
-**Current task total: one Gemini request and zero Qloo requests.** HTTP 200 is
+**That task's total: one Gemini request and zero Qloo requests.** HTTP 200 is
 an observed transport outcome, not a verified native function call or proposal.
 No usable function/text result, provider error code/message, native tool trace,
 Qloo ranking, selected book, agenda, revision, or applied draft was available.
@@ -299,6 +299,97 @@ production build** were reused for unchanged code, as requested. Only the local
 model/precedence checks, helper syntax checks, documentation diff check, and
 this one live probe were performed in this task. The tracked example remains
 `gemini-3.8-flash` because a working 3.6 agent configuration was not verified.
+
+## Confirmed response-contract repair and current live acceptance
+
+The effective model remains **`gemini-3.6-flash`**, loaded from ignored
+`.env.local` in both the probe and actual Next.js production preview. Credentials,
+SDK 2.30.0, API `v1beta`, low thinking, plain initial `auto`, stateless storage,
+deadlines, cancellation, request limits, and retries were unchanged.
+
+Before the single new capture request, a bounded server-only observer was added
+immediately before the production wire guard and after SDK extraction. It records
+only structural metadata and an exact rejection path. The diagnostic retained
+the complete original **in memory**, replayed it through the corrected pinned SDK
+using a fake transport, and then terminated. Only sanitized snapshots were saved;
+no raw response, prompt, argument value, thought text, ID value, or signature was
+printed or persisted. Invalid media, body bounds/decoding, and SDK failures also
+have fixed structural rejection paths. The existing sanitized HTTP-error capture
+remains separate and unchanged.
+
+The capture returned HTTP **200 in 33,735 ms** with:
+
+- Top-level keys: `status`, `usage`, `created`, `updated`, `service_tier`,
+  `steps`, `object`, `model`. **No interaction resource `id`.**
+- `status: "requires_action"`; `steps` is an array of two entries. No legacy
+  `outputs` field, no final text, no reported block/truncation.
+- A `thought` step and a direct `function_call` named `rank_eligible_books`.
+  The call had a present 11-character ID and object-valued empty arguments.
+  Both steps carried signatures, retained unchanged internally.
+- Exact old guard failure: **`$.id`**, expected a nonempty string of at most
+  512 characters, observed **`undefined`**.
+
+The **production adapter**, not the helper or final-text parser, rejected this
+response before the SDK could process it. The correction accepts an omitted
+interaction resource ID for this always-`store:false` path. A supplied resource
+ID still has its prior type/length checks. No resource ID is fabricated or used:
+stateless continuation uses the complete returned steps and the separate native
+function-call ID. The SDK successfully consumed the **same retained response**
+offline after the correction, identifying the ranking function with no extra API
+request. Its declarations mark resource IDs required, but its runtime accepts
+this observed response; the adapter must not reject a usable stateless tool turn
+solely for unused resource metadata.
+
+The native call-ID, tool-name, empty-object arguments, unknown-tool rejection,
+eligibility, evidence, agenda, and per-run budgets remain authoritative. The
+[May migration guide](https://ai.google.dev/gemini-api/docs/interactions-breaking-changes-may-2026)
+and [API reference](https://ai.google.dev/api/interactions-api) describe direct
+`function_call` steps and full-step stateless continuation; no legacy format
+parsing or incomplete history reconstruction was added. Missing final text is
+valid for a tool-only turn. Final text still comes from the SDK's documented
+`output_text`, derived from `model_output.content`; the pinned SDK creates an
+ordinary property, so getter/enumerability was not the observed cause. Inspection
+reads the property directly and also tests a non-enumerable getter offline.
+
+`tests/fixtures/gemini-stateless-tool.json` is derived from the observed response:
+the absent resource ID, status, signed step types, function name, and empty
+arguments are retained; opaque values are replaced with explicit synthetic
+markers. It is a tool-turn fixture, not an invented successful proposal. Offline
+replay verifies acceptance and exact preservation of both signature-bearing
+steps plus a matching native function-result call ID. Existing tests continue
+to reject missing native call IDs and invalid tools/arguments.
+
+The actual production browser journey used the sample catalogue, confirmed
+Example A (Amélie + Norah Jones), 400 pages, all sample languages, and a
+45-minute interactive request. The selected Guide had an edited title and notes
+before Generate. The existing browser helper waited up to 170 seconds and
+disabled unrelated browser Qloo actions.
+
+| Stage | Measured elapsed | Actual outcome |
+|---|---|---|
+| Capture | 33,735 ms | HTTP 200; original guard rejected missing resource ID. Same original passed offline replay after repair. No tool executed by probe. |
+| A: initial Gemini turn, INR 450 | 6,409 ms | HTTP 200, valid native ranking call accepted. |
+| A: `rank_eligible_books` | 1,466 ms | Fresh Qloo ranking completed: **3 of 6** eligible sample books assessed. Current eligible inventory and usable numerical evidence passed server checks before continuation. |
+| A: Gemini after tool result | 790 ms | HTTP **429**, native code **`too_many_requests`**. Sanitized provider explanation says the project exceeded a quota. Public code `GEMINI_QUOTA`. |
+| A: complete local browser request | 9,017 ms | Local HTTP 429. No completed proposal, proposed selection, or agenda. Existing selected Guide and edits remain visible in the failure screenshot. |
+| B: revise at INR 300 | Not attempted | **UNVERIFIED**: no valid first proposal exists. |
+| Explicit Apply | Not attempted | **UNVERIFIED** with live output. |
+
+Actual trace: `gemini completed` → `rank_eligible_books completed` →
+`gemini failed`. **This task used three Gemini requests and one Qloo request**:
+one capture plus the two model requests/one ranking in A. No repair, automatic
+retry, repeated ranking, substituted proposal, or extra probe occurred. No
+deadline fired. The HTTP 429 is an unresolved provider quota failure, so live
+work stopped as required. Native Gemini tool execution and Qloo ranking are now
+verified; final prose generation, proposal validation/agenda totals, fresh
+revision ranking, and live Apply remain **UNVERIFIED**. The quota response does
+not identify which particular quota or when it resets; no billing change was made.
+
+After the final source change: **208 Node tests**, lint, TypeScript, production
+build, and **46 Chromium production regressions** passed. Routine checks used
+synthetic providers and made zero live calls. Desktop/390px, keyboard, explicit
+Apply, preserved drafts, stale responses, and import/reset contracts remain
+covered with controlled browser fixtures.
 
 ## Artifacts and remaining limits
 
@@ -330,6 +421,12 @@ this one live probe were performed in this task. The tracked example remains
   configuration source, local preview origin, and tested source checkpoint.
 - `artifacts/playwright/probe-gemini-36.mjs` and `verify-gemini-36.mjs`: existing
   bounded helpers adapted to separate 3.6 evidence paths. Browser turns were not run.
+- `artifacts/playwright/gemini-contract-capture.json`: current sanitized wire
+  rejection and successful offline SDK replay, including actual step metadata.
+- `artifacts/playwright/event-agent-contract-results.json`: actual live A trace,
+  elapsed times, quota failure, and three-Gemini/one-Qloo total.
+- `artifacts/playwright/event-agent-contract-stopped.png`: actual live quota
+  failure with the selected Guide and edited outline preserved.
 
 Generated artifacts stay ignored. Desktop/390px and actual keyboard interactions
 are covered in Chromium; other browsers and physical devices are unverified.

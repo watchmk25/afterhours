@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { Interactions } from "@google/genai";
 import { summarizeGeminiError, type GeminiDiagnostic } from "./gemini-diagnostics.ts";
+import { geminiResponseIssue, inspectGeminiResponse, type GeminiResponseSnapshot } from "./gemini-response.ts";
 
 // The pinned SDK exports this request shape as ParamsNonStreaming.
 export type GeminiTurn = Omit<
@@ -122,12 +123,15 @@ export function createGeminiProvider({
   fetcher = globalThis.fetch,
   timeoutMs = maximumDeadlineMs,
   onDiagnostic,
+  onResponse,
 }: {
   apiKey: string;
   model?: string;
   fetcher?: typeof fetch;
   timeoutMs?: number;
   onDiagnostic?: (diagnostic: GeminiDiagnostic) => void;
+  /** Trusted server-only observer. Retain originals in memory; persist only the snapshot. */
+  onResponse?: (snapshot: GeminiResponseSnapshot, original: unknown) => void;
 }): GeminiProvider {
   return {
     async create(turn, signal, remainingMs = maximumDeadlineMs) {
@@ -136,6 +140,11 @@ export function createGeminiProvider({
       const controller = new AbortController();
       let expired = false;
       let dispatched = false;
+      let wireResponse: unknown;
+      const observe = (original: unknown, phase: "wire" | "sdk", rejection?: { path: string; expected: string; observed: string }) => {
+        const snapshot = inspectGeminiResponse(original, model, 200, phase, [apiKey]);
+        try { onResponse?.({ ...snapshot, ...(rejection ? { rejection } : {}) }, original); } catch { /* Observation cannot change validation. */ }
+      };
       if (!Number.isFinite(remainingMs) || remainingMs <= 0) throw new GeminiProviderError("GEMINI_DEADLINE", undefined, "gemini_request");
       const configuredDeadline = Number.isFinite(timeoutMs) && timeoutMs > 0
         ? Math.min(timeoutMs, maximumDeadlineMs) : maximumDeadlineMs;
@@ -222,25 +231,34 @@ export function createGeminiProvider({
           throw errorForStatus(response.status);
         }
         if (response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {
+          observe(undefined, "wire", { path: "$http.contentType", expected: "application/json", observed: "unsupported media type" });
           stopReading(response.body);
           throw new GeminiProviderError("GEMINI_BAD_RESPONSE");
         }
         const length = response.headers.get("content-length");
         if (length !== null && (!/^\d+$/.test(length) || Number(length) > maximumResponseBytes)) {
+          observe(undefined, "wire", { path: "$body.bytes", expected: "at most 262144 bytes", observed: "invalid or excessive declared size" });
           stopReading(response.body);
           throw new GeminiProviderError("GEMINI_BAD_RESPONSE");
         }
-        const body = await readBounded(response.body, maximumResponseBytes, controller.signal, checkStopped);
+        let body: Awaited<ReturnType<typeof readBounded>>;
+        try { body = await readBounded(response.body, maximumResponseBytes, controller.signal, checkStopped); }
+        catch (error) {
+          checkStopped();
+          observe(undefined, "wire", { path: "$body", expected: "readable body within 262144 bytes", observed: "body read failed or exceeded bound" });
+          throw error;
+        }
         checkStopped();
         let parsed: unknown;
         try {
           parsed = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body));
         } catch {
+          observe(body, "wire", { path: "$body.json", expected: "valid UTF-8 JSON", observed: "decoding failed" });
           throw new GeminiProviderError("GEMINI_BAD_RESPONSE");
         }
-        if (!isRecord(parsed) || typeof parsed.id !== "string" || !parsed.id || parsed.id.length > 512
-          || typeof parsed.status !== "string" || !Array.isArray(parsed.steps)
-          || parsed.steps.length > 64 || parsed.steps.some((step) => !isRecord(step) || typeof step.type !== "string")) {
+        wireResponse = parsed;
+        observe(parsed, "wire");
+        if (geminiResponseIssue(parsed)) {
           throw new GeminiProviderError("GEMINI_BAD_RESPONSE");
         }
         // Supply only bounded JSON and the content type to the SDK. Provider
@@ -271,6 +289,7 @@ export function createGeminiProvider({
         });
         const interaction = await Promise.race([operation, aborted]);
         checkStopped();
+        observe(interaction, "sdk");
         return interaction;
       } catch (error) {
         if (signal.aborted || expired) throw stoppedError();
@@ -285,6 +304,7 @@ export function createGeminiProvider({
           }
           current = current.cause;
         }
+        if (wireResponse !== undefined) observe(wireResponse, "sdk", { path: "$sdk.interaction", expected: "SDK Interaction", observed: "SDK processing failed" });
         throw new GeminiProviderError("GEMINI_BAD_RESPONSE");
       } finally {
         clearTimeout(timer);

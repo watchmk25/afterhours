@@ -286,7 +286,7 @@ test("Gemini rejects malformed JSON, invalid UTF-8, missing native fields, and n
   for (const response of [
     () => new Response(`{"error":"${fixtureKey}`, { headers: { "Content-Type": "application/json" } }),
     () => new Response(new Uint8Array([0xc3]), { headers: { "Content-Type": "application/json" } }),
-    () => Response.json({ status: "completed", steps: [] }),
+    () => Response.json({ steps: [] }),
     () => Response.json({ ...completed(), steps: new Array(65).fill({ type: "thought" }) }),
     () => new Response(fixtureKey, { headers: { "Content-Type": "text/html" } }),
     () => new Response(new ReadableStream({ start(stream) { stream.error(new Error(`${fixtureKey} synthetic-raw-provider-error`)); } }), {

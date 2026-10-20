@@ -53,6 +53,7 @@ export async function handleEventRequest(request: Request) {
   const agent = createEventAgent({ geminiConfigured, qlooConfigured,
     ...(geminiConfigured ? { gemini: createGeminiProvider({ apiKey: geminiKey, model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
       onDiagnostic: (diagnostic) => console.error("[AfterHours Gemini]", JSON.stringify(diagnostic)),
+      onResponse: (snapshot) => console.info("[AfterHours Gemini response]", JSON.stringify(snapshot)),
     }) } : {}),
     qloo: createRuntimeQlooService(1),
   });

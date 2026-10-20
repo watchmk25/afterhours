@@ -1,0 +1,16 @@
+{
+  "status": "requires_action",
+  "steps": [
+    {
+      "type": "thought",
+      "signature": "synthetic-redacted-thought-signature"
+    },
+    {
+      "type": "function_call",
+      "id": "synthetic-redacted-call-id",
+      "name": "rank_eligible_books",
+      "arguments": {},
+      "signature": "synthetic-redacted-function-signature"
+    }
+  ]
+}

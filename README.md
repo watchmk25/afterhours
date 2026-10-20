@@ -4,7 +4,7 @@ A local organizer workspace for independent bookstores and book clubs. Start wit
 
 **Qloo matching and Gemini event planning are available on explicit request for supported sample books.** The default inventory is illustrative. Imported CSV inventory keeps local filtering and fixed event templates; live matching and planning do not support imported rows in this slice.
 
-The planner's controlled checks pass, but **live Gemini proposal/revision remains UNVERIFIED**. The tool-choice HTTP 400 is corrected, with local limits of 60 seconds per Gemini request and 150 seconds per run. The preserved 3.8 probe returned HTTP 503 after 7.284 seconds. An explicit local `gemini-3.6-flash` probe received HTTP 200 after 2.886 seconds, but the adapter rejected the response as `GEMINI_BAD_RESPONSE`; no native tool call was verified or executed. See [the actual verification and blocker](docs/event-agent.md).
+**Native Gemini tool execution and fresh Qloo ranking are now verified live with `gemini-3.6-flash`.** The response guard was corrected to accept an omitted interaction resource ID in the observed stateless response. The following proposal-generation request hit HTTP 429 (project quota), so **completed proposals, revision, and live Apply remain UNVERIFIED**. Limits remain 60 seconds per Gemini request and 150 seconds per run. See [actual traces, timings, and the remaining blocker](docs/event-agent.md).
 
 ## Run locally
 
@@ -85,6 +85,8 @@ See [the live-matching verification record](docs/live-qloo-matching.md) for the 
 ## Bounded Gemini event planner
 
 Keep the existing `.env.local` file and its complete Qloo credential. Add `GEMINI_API_KEY` using your local editor, following the empty tracked `.env.example`; do not place a credential in a command or a `NEXT_PUBLIC_` variable. Optionally configure `GEMINI_MODEL` (default `gemini-3.8-flash`) and restart Next.js. The server explicitly passes **GEMINI_API_KEY** to the pinned official **@google/genai 2.30.0** SDK; it never selects `GOOGLE_API_KEY`, Vertex AI, or another provider automatically. This setup does not enable billing or change the hosted environment.
+
+The current local verification explicitly uses `GEMINI_MODEL=gemini-3.6-flash` in ignored `.env.local`. Its native function call and Qloo tool execution passed; final proposal generation remains quota-blocked. This setting is explicit, with no runtime model fallback.
 
 1. Keep the sample catalogue active, confirm an audience preset or searched interests, and set the structured book filters.
 2. Describe the desired activities in **Event request** and choose **Event duration (minutes)**, a whole number from 15–180. Requests are bounded to 10–1000 characters. Avoid private participant details.
