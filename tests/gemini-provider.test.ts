@@ -9,7 +9,7 @@ import {
 } from "../lib/gemini-provider.ts";
 import type { GeminiProviderErrorCode, GeminiTurn } from "../lib/gemini-provider.ts";
 import { createEventAgent } from "../lib/event-agent.ts";
-import { QLOO_PRESETS } from "../lib/qloo-sample.ts";
+import { QLOO_PRESETS, SAMPLE_QLOO_MAPPINGS } from "../lib/qloo-sample.ts";
 import { createQlooService } from "../lib/qloo-service.ts";
 
 // All credentials, signatures, provider bodies, and transports here are synthetic.
@@ -140,6 +140,84 @@ test("the event agent's initial request serializes through the pinned Interactio
   assert.equal(organizerInput.durationMinutes, 45);
   assert.equal(organizerInput.confirmedInterests.length, 2);
   assert(!JSON.stringify(body).includes(fixtureKey));
+});
+
+test("the configured Flash Lite agent sends minimal thinking and compact evidence through the actual SDK", async () => {
+  const nativeSteps: Interactions.Step[] = [
+    { type: "thought", signature: "synthetic-lite-native-signature", summary: [{ type: "text", text: "Synthetic hidden content" }] },
+    { type: "function_call", id: "synthetic-lite-call", name: "rank_eligible_books", arguments: {} },
+  ];
+  let geminiRequests = 0;
+  const fake = stub(() => Response.json(++geminiRequests === 1
+    ? { status: "requires_action", steps: nativeSteps }
+    : completed(JSON.stringify({ status: "clarification", question: "Would you prefer paired or small-group discussion?" }))));
+  let qlooRequests = 0;
+  const qloo = createQlooService({ credential: "synthetic-qloo-key", minimumCandidates: 1,
+    signingKey: "synthetic-signing-key", fetcher: async () => {
+      qlooRequests += 1;
+      return Response.json({ results: { entities: [{ entity_id: SAMPLE_QLOO_MAPPINGS["the-guide"],
+        types: ["urn:entity:book"], query: { affinity: 0.625, explainability: {
+          "signal.interests.entities": [{ entity_id: QLOO_PRESETS[0].interests[0].entityId, score: 0.4 }],
+        } } }] } });
+    } });
+  const agent = createEventAgent({
+    gemini: createGeminiProvider({ apiKey: fixtureKey, model: "gemini-3.5-flash-lite", fetcher: fake.fetcher }),
+    qloo, geminiConfigured: true, qlooConfigured: true, thinkingLevel: "minimal",
+  });
+  const filters = { maxPrice: "450", maxPages: "400", languages: ["English", "Hindi", "Bengali"] };
+  const result = await agent.run({ catalogueSource: "sample", filters,
+    interests: QLOO_PRESETS[0].interests.map(({ reference }) => structuredClone(reference)),
+    request: "Plan a welcoming interactive book event.", duration: 45, mode: "generate" });
+  assert(result.body.ok && result.body.result.status === "clarification");
+  assert.deepEqual(result.body.usage, { geminiRequests: 2, qlooRequests: 1 });
+  assert.equal(geminiRequests, 2);
+  assert.equal(qlooRequests, 1);
+  const first = fake.bodies[0] as Record<string, unknown>;
+  const second = fake.bodies[1] as Record<string, unknown>;
+  for (const body of [first, second]) {
+    assert.equal(body.model, "gemini-3.5-flash-lite");
+    assert.equal(body.store, false);
+    assert.equal(body.stream, false);
+    assert.equal(body.background, false);
+    assert(!Object.hasOwn(body, "contents"));
+    assert(!Object.hasOwn(body, "config"));
+  }
+  assert.deepEqual(first.generation_config, { thinking_level: "minimal", max_output_tokens: 4096, tool_choice: "auto" });
+  assert.deepEqual(second.generation_config, { thinking_level: "minimal", max_output_tokens: 4096, tool_choice: "none" });
+  assert(!Object.hasOwn(first, "response_format"));
+  assert(Object.hasOwn(second, "response_format"));
+  const firstHistory = first.input as Interactions.Step[];
+  assert.equal(firstHistory.length, 1);
+  assert(firstHistory[0].type === "user_input");
+  const content = firstHistory[0].content?.[0];
+  assert(content?.type === "text");
+  const organizerInput = JSON.parse(content.text);
+  assert.deepEqual(organizerInput.authoritativeFilters, filters);
+  assert.equal(organizerInput.durationMinutes, 45);
+  assert(!Object.hasOwn(organizerInput, "outputSchema"), "The initial tool turn does not duplicate the final response schema");
+  const history = second.input as Interactions.Step[];
+  assert.deepEqual(history.slice(1, 3), nativeSteps, "Native continuation keeps complete signature-bearing steps");
+  const toolResult = history[3];
+  assert(toolResult.type === "function_result");
+  assert.equal(toolResult.call_id, "synthetic-lite-call");
+  assert(Array.isArray(toolResult.result) && toolResult.result[0].type === "text");
+  const payload = JSON.parse(toolResult.result[0].text);
+  assert.equal(payload.books.length, 1);
+  assert.equal(payload.books[0].localId, "the-guide");
+  assert.equal(payload.books[0].title, "The Guide");
+  assert.equal(payload.books[0].author, "R. K. Narayan");
+  assert.deepEqual(payload.books[0].evidence, [
+    { id: "affinity:the-guide", kind: "affinity", value: 0.625 },
+    { id: `contribution:the-guide:${QLOO_PRESETS[0].interests[0].entityId}`, kind: "contribution", value: 0.4,
+      interestName: QLOO_PRESETS[0].interests[0].name },
+  ]);
+  for (const key of ["priceInr", "pages", "language", "stock", "affinity"]) {
+    assert(!Object.hasOwn(payload.books[0], key), `The tool result omits redundant ${key}`);
+  }
+  assert.deepEqual(payload.coverage, { eligibleCount: 6, supportedCount: 3, assessedCount: 1 });
+  assert(!JSON.stringify(result.body).includes("synthetic-lite-native-signature"));
+  assert(!JSON.stringify(result.body).includes("Synthetic hidden content"));
+  assert(!JSON.stringify(result.body).includes(fixtureKey));
 });
 
 test("Gemini explicit configuration ignores conflicting synthetic provider environment settings", async () => {

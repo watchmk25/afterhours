@@ -48,7 +48,7 @@ async function providerFailure(operation: Promise<unknown>) {
   return error;
 }
 
-test("Gemini's default and configured maximum allow exactly 60 seconds with no retry", async (t) => {
+test("Gemini's default and configured maximum allow exactly 20 seconds with no retry", async (t) => {
   t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1_000_000 });
   t.mock.method(performance, "now", () => Date.now());
   for (const timeoutMs of [undefined, 120_000]) {
@@ -69,7 +69,7 @@ test("Gemini's default and configured maximum allow exactly 60 seconds with no r
     } });
     const pending = providerFailure(provider.create(turn, new AbortController().signal));
     await dispatched;
-    t.mock.timers.tick(59_999);
+    t.mock.timers.tick(19_999);
     await Promise.resolve();
     assert.equal(transportSignal?.aborted, false);
     t.mock.timers.tick(1);
@@ -84,7 +84,7 @@ test("Gemini's default and configured maximum allow exactly 60 seconds with no r
 test("Gemini uses the smaller provider or remaining-run request budget", async (t) => {
   t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1_000_000 });
   t.mock.method(performance, "now", () => Date.now());
-  for (const [timeoutMs, remainingMs, expectedMs] of [[60_000, 23_000, 23_000], [12_000, 40_000, 12_000]]) {
+  for (const [timeoutMs, remainingMs, expectedMs] of [[60_000, 23_000, 20_000], [12_000, 40_000, 12_000], [20_000, 7_000, 7_000]]) {
     let ready!: () => void;
     const dispatched = new Promise<void>((resolve) => { ready = resolve; });
     let calls = 0;
@@ -110,22 +110,23 @@ test("agent stages share the remaining run budget across ranking and one repair"
     assert.equal(typeof budget, "number");
     budgets.push(budget!);
     const index = budgets.length;
-    t.mock.timers.tick(index === 1 ? 45_000 : index === 2 ? 45_000 : 1_000);
+    t.mock.timers.tick(index === 1 ? 8_000 : index === 2 ? 10_000 : 1_000);
     return index === 1 ? toolCall() : index === 2 ? completed(null) : clarification();
   } };
-  const qloo = offlineQloo(async () => { qlooCalls += 1; t.mock.timers.tick(9_000); return rankingResponse(); });
+  const qloo = offlineQloo(async () => { qlooCalls += 1; t.mock.timers.tick(4_000); return rankingResponse(); });
   const result = await createEventAgent({ gemini, qloo, geminiConfigured: true, qlooConfigured: true }).run(requestInput());
   assert(result.body.ok && result.body.result.status === "clarification");
-  assert.deepEqual(budgets, [60_000, 60_000, 51_000]);
+  assert.deepEqual(budgets, [20_000, 18_000, 8_000]);
   assert.equal(qlooCalls, 1);
   assert.deepEqual(result.body.usage, { geminiRequests: 3, qlooRequests: 1 });
-  assert.deepEqual(result.body.trace.filter(({ action }) => action === "gemini").map(({ elapsedMs }) => elapsedMs), [45_000, 45_000, 1_000]);
-  assert.equal(result.body.trace.find(({ action }) => action === "rank_eligible_books")?.elapsedMs, 9_000);
+  assert.deepEqual(result.body.trace.filter(({ action }) => action === "gemini").map(({ elapsedMs }) => elapsedMs), [8_000, 10_000, 1_000]);
+  assert.equal(result.body.trace.find(({ action }) => action === "rank_eligible_books")?.elapsedMs, 4_000);
+  assert.equal(result.body.trace.reduce((elapsed, stage) => elapsed + (stage.elapsedMs ?? 0), 0), 23_000);
   assert(result.body.trace.every(({ elapsedMs }) => Number.isFinite(elapsedMs) && elapsedMs! >= 0));
   assert(!JSON.stringify(result.body).includes(syntheticKey));
 });
 
-test("the 150-second overall cap stops pending Gemini and excludes a late tool call", async (t) => {
+test("the 30-second overall cap stops pending Gemini and excludes a late tool call", async (t) => {
   t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1_000_000 });
   t.mock.method(performance, "now", () => Date.now());
   for (const overallTimeoutMs of [undefined, 300_000]) {
@@ -134,12 +135,12 @@ test("the 150-second overall cap stops pending Gemini and excludes a late tool c
     let signal: AbortSignal | undefined;
     let qlooCalls = 0;
     const gemini: GeminiProvider = { async create(_turn, currentSignal, budget) {
-      assert.equal(budget, 60_000); signal = currentSignal; return waiting;
+      assert.equal(budget, 20_000); signal = currentSignal; return waiting;
     } };
     const agent = createEventAgent({ gemini, qloo: offlineQloo(async () => { qlooCalls += 1; return rankingResponse(); }),
       geminiConfigured: true, qlooConfigured: true, overallTimeoutMs });
     const pending = agent.run(requestInput());
-    t.mock.timers.tick(149_999);
+    t.mock.timers.tick(29_999);
     assert.equal(signal?.aborted, false);
     t.mock.timers.tick(1);
     const result = await pending;
@@ -147,12 +148,37 @@ test("the 150-second overall cap stops pending Gemini and excludes a late tool c
     assert.equal(result.status, 504);
     assert.equal(signal?.aborted, true);
     assert.equal(result.body.trace.at(-1)?.deadline, "agent_run");
-    assert.equal(result.body.trace.at(-1)?.elapsedMs, 150_000);
+    assert.equal(result.body.trace.at(-1)?.elapsedMs, 30_000);
     deliver(toolCall());
     await nextTurn();
     assert.equal(qlooCalls, 0);
     assert.deepEqual(result.body.usage, { geminiRequests: 1, qlooRequests: 0 });
   }
+});
+
+test("a final model response at the shared deadline cannot become a proposal or start a repair", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"], now: 1_000_000 });
+  t.mock.method(performance, "now", () => Date.now());
+  const budgets: number[] = [];
+  let qlooCalls = 0;
+  const gemini: GeminiProvider = { async create(_turn, _signal, budget) {
+    assert.equal(typeof budget, "number");
+    budgets.push(budget!);
+    if (budgets.length === 1) { t.mock.timers.tick(8_000); return toolCall(); }
+    t.mock.timers.tick(18_000);
+    return clarification();
+  } };
+  const qloo = offlineQloo(async () => { qlooCalls += 1; t.mock.timers.tick(4_000); return rankingResponse(); });
+  const result = await createEventAgent({ gemini, qloo, geminiConfigured: true, qlooConfigured: true }).run(requestInput());
+  assert(!result.body.ok && result.body.error.code === "RUN_TIMEOUT");
+  assert.equal(result.status, 504);
+  assert.deepEqual(budgets, [20_000, 18_000]);
+  assert.equal(qlooCalls, 1);
+  assert.deepEqual(result.body.usage, { geminiRequests: 2, qlooRequests: 1 });
+  assert.equal(result.body.trace.at(-1)?.action, "gemini");
+  assert.equal(result.body.trace.at(-1)?.deadline, "agent_run");
+  assert.equal(result.body.trace.at(-1)?.elapsedMs, 18_000);
+  assert(!result.body.trace.some(({ action }) => action === "validation"));
 });
 
 test("a shorter remaining overall budget aborts an active ranking before its own 10-second deadline", async (t) => {

@@ -129,7 +129,9 @@ test("native ranking executes once and preserves exact call IDs and thought sign
   const payload = JSON.parse(toolResult.result[0].text);
   assert.deepEqual(payload.books.map((book: { localId: string }) => book.localId), ["malgudi-days", "the-guide"]);
   assert.equal(payload.books[1].title, "The Guide");
-  assert.equal(payload.books[1].priceInr, 299);
+  for (const key of ["priceInr", "pages", "language", "stock", "affinity"]) {
+    assert(!Object.hasOwn(payload.books[1], key));
+  }
   assert(payload.books[1].evidence.some((item: { id: string }) => item.id === "affinity:the-guide"));
   assert.deepEqual(payload.coverage, { eligibleCount: 3, supportedCount: 2, assessedCount: 2 });
   assert.equal(fixture.geminiCalls[1].turn.generation_config?.tool_choice, "none");

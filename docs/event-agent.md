@@ -25,8 +25,10 @@ local filtering/templates but cannot use sample matching/planning.
 The official `@google/genai` SDK is pinned to **2.30.0**. The server explicitly
 passes `GEMINI_API_KEY`, never the environment's `GOOGLE_API_KEY`; Vertex and
 enterprise routing are disabled. `GEMINI_MODEL` defaults to `gemini-3.8-flash`.
+The current local configuration explicitly selects `gemini-3.5-flash-lite` and
+uses its documented `minimal` thinking level; other model settings retain `low`.
 The fixed native endpoint is POST
-`https://generativelanguage.googleapis.com/v1beta/interactions`, low thinking,
+`https://generativelanguage.googleapis.com/v1beta/interactions`,
 `store:false`, no background operation or streaming, and no SDK/network retries.
 No billing or hosted credentials are configured.
 
@@ -37,16 +39,17 @@ candidate list, inventory values, or relaxed filters. Qloo remains fixed to
 `https://hackathon.api.qloo.com/v2/insights`.
 
 Per run: **at most three Gemini requests including one repair, and one Qloo
-ranking request**. A successful proposal requires a current tool result. Native
+ranking request**. Normal execution uses two Gemini requests and one Qloo
+ranking. A successful proposal requires a current tool result. Native
 call IDs and all opaque thought/signature steps are preserved internally for
 stateless continuation; hidden reasoning is not exposed in the UI or reports.
 
 Request/proposal input is capped at 16 KiB; event text is 10–1000 characters.
 Gemini transport is capped at 128 KiB request/256 KiB response and 4096 output
-tokens, with up to a 60-second whole-response deadline for local validation. Each
+tokens, with up to a 20-second whole-response deadline for local validation. Each
 Gemini operation receives the smaller of that limit and the remaining run budget.
 Qloo retains its 1 MiB body and ten-second deadline, combined with the remaining
-run's abort signal. A run has a 150-second overall deadline; reading the HTTP
+run's abort signal. A run has a 30-second overall deadline; reading the HTTP
 input has a five-second deadline. Cancellation propagates to active transports
 and prevents further steps, but cannot retract a dispatched request.
 
@@ -71,17 +74,17 @@ are labelled as Gemini proposals requiring review, separate from Qloo scores.
 ## Automated verification
 
 - Lint, TypeScript checking, and the Next.js production build passed.
-- **208 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
-  16 actual-SDK transport fixture tests, 14 sanitized-diagnostic tests, and seven
+- **210 Node tests passed**: existing suites plus 18 event-loop, 16 event-domain,
+  17 actual-SDK transport fixture tests, 14 sanitized-diagnostic tests, and eight
   mocked-clock deadline tests and nine response-contract checks. Native function-result IDs/signatures,
   explicit key precedence, one-fetch SDK behavior, no retries, fresh INR 450→300
   eligibility, invalid book/evidence/agenda repair, budget limits, missing
   credentials, sanitized failures, cancellation, and deadlines are covered.
-- **46 Chromium tests passed** with one worker, zero retries, and a local **production** preview.
+- **47 Chromium tests passed** with one worker, zero retries, and a local **production** preview.
   The original 27 workspace/import/matching journeys retain their assertions;
   only banner copy reflects the new optional planner. Planner journeys use
   intercepted controlled API fixtures, never live model/Qloo calls.
-  Nineteen planner journeys include desktop/390px captures, real keyboard actions,
+  Twenty planner journeys include desktop/390px captures, real keyboard actions,
   current-constraint revision, explicit same/different-book Apply, stale responses,
   cancellation, errors/clarification, and CSV/Reset preservation contracts.
 - Direct local HTTP checks verified rejection of wrong Origin/content type,
@@ -300,7 +303,7 @@ model/precedence checks, helper syntax checks, documentation diff check, and
 this one live probe were performed in this task. The tracked example remains
 `gemini-3.8-flash` because a working 3.6 agent configuration was not verified.
 
-## Confirmed response-contract repair and current live acceptance
+## Earlier response-contract repair and quota-blocked acceptance (checkpoint 0f0ae7b)
 
 The effective model remains **`gemini-3.6-flash`**, loaded from ignored
 `.env.local` in both the probe and actual Next.js production preview. Credentials,
@@ -391,10 +394,124 @@ synthetic providers and made zero live calls. Desktop/390px, keyboard, explicit
 Apply, preserved drafts, stale responses, and import/reset contracts remain
 covered with controlled browser fixtures.
 
+## Flash Lite responsiveness and complete live acceptance (2026-10-20)
+
+Starting checkpoint: `0f0ae7be3805868e6dcb738ad844a4984382be9b` on
+`feat/event-agent`. Only `GEMINI_MODEL` in ignored `.env.local` was changed to
+**`gemini-3.5-flash-lite`**. All other parsed local settings were compared
+internally and preserved. The actual Next.js production process on port 3100
+confirmed that model and `.env.local` as its source, with no inherited model
+override. Credentials were neither displayed nor copied. No other server was
+stopped, and main, Vercel, the public deployment, SDK 2.30.0, and dependencies
+were unchanged.
+
+The official [model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite)
+lists function calling, structured output, and thinking support. The current
+[thinking table](https://ai.google.dev/gemini-api/docs/thinking) documents
+**`minimal`** for this model; the installed SDK types include both the exact
+model identifier and that native thinking value. The server selects minimal
+only for this explicit model, with no runtime fallback. Actual-SDK offline
+serialization checks verify `generation_config.thinking_level: "minimal"`,
+plain initial `auto`, subsequent `none`, 4096 output tokens, the response schema,
+and complete signature-bearing stateless continuation.
+
+The previous 60/150-second diagnostic allowances were replaced by a **20-second
+Gemini whole-response cap and a 30-second complete-run cap**. Each model call,
+including the permitted repair, receives `min(20 seconds, remaining run time)`.
+Qloo has `min(10 seconds, remaining run time)` through its own deadline and the
+shared abort signal. Cancellation still propagates; late tool calls and final
+responses are rejected. The HTTP body-read cap remains five seconds outside the
+agent run; the standalone browser helper waits 45 seconds for the response so
+it does not cancel the server prematurely. No Vercel timeout setting changed.
+
+The initial prompt no longer duplicates the output schema or interest UUIDs.
+Tool results omit repeated inventory fields and duplicate affinity values while
+retaining current book identities, evidence IDs, actual scores/contributions,
+interest names, coverage, and provider warnings. Server-owned eligibility,
+metadata joins, evidence validation, conservative prose checks, exact agenda
+totals, native call IDs, signatures, and the three-model/one-ranking maximum
+remain intact. Normal execution uses two Gemini calls and one ranking.
+
+All offline checks passed before live execution, making **zero live requests**:
+210 Node tests, lint, explicit TypeScript checking, production build, and all
+47 Chromium production regressions. Mock clocks verify exact caps, smaller
+remaining budgets, Qloo cancellation, repair sharing, and rejection of a final
+response at the overall deadline. A new controlled browser journey verifies
+loading/Cancel, disabled duplicate actions, edits made while pending surviving
+a deadline failure, prompt error release, and stale Apply protection. Its first
+run exposed a test-only expectation error: Enter in a focused textarea inserts
+a newline. The exact expected value was corrected without changing application
+behavior; the final full 47-test suite passed with zero retries.
+
+The actual live browser used sample inventory, confirmed Example A
+**Amélie (2001) + Norah Jones**, 400 pages, all sample languages, a 45-minute
+interactive paired-discussion/reflection request, and an already edited Guide
+outline. No separate probe was run. Each native model request returned HTTP
+**200**. Both fresh Qloo operations succeeded; no deadline, repair, fallback,
+or retry occurred.
+
+| Measured stage | A: INR 450 | B: revised INR 300 |
+|---|---:|---:|
+| Loading observed after action began | 277 ms | 922 ms |
+| Initial Gemini native tool call | 6,869 ms | 5,574 ms |
+| Fresh `rank_eligible_books` execution | 1,687 ms | 1,657 ms |
+| Gemini proposal after tool result | 17,961 ms | 6,359 ms |
+| Server proposal validation | 6 ms | 0 ms (rounded) |
+| Complete browser response | 26,893 ms | 14,528 ms |
+| Valid preview rendered and Apply enabled | **26,928 ms** | **14,558 ms** |
+| Qloo coverage | **3 of 6** eligible books | **1 of 3** eligible books |
+| Gemini / Qloo requests | **2 / 1** | **2 / 1** |
+
+Both traces were `gemini completed` → `rank_eligible_books completed` →
+`gemini completed` → `validation completed`. The observed native function was
+`rank_eligible_books` with empty object arguments and a present call ID. Native
+thought/function signatures were retained internally; no hidden reasoning or
+signature was exposed. Final text came from `model_output.content` through the
+SDK's `output_text` property and passed the existing validation.
+
+| Actual proposal | A | B |
+|---|---|---|
+| Selected book | **The Namesake**, Jhumpa Lahiri, illustrative INR 450 | **The Guide**, R. K. Narayan, illustrative INR 299 |
+| Event title | AfterHours Interactive Reading Session | AfterHours Interactive Reading Session |
+| Agenda | Welcome and Overview 5; Paired Discussion 20; Reflective Writing 15; Closing Activity 5 | Welcome and Overview 10; Paired Discussion 20; Reflective Writing 10; Closing Activity 5 |
+| Exact duration | **45 minutes** | **45 minutes** |
+| Affinity evidence | 0.7179884704476631 | 0.6437325781964618 |
+| Amélie input contribution | 0.6219156325588995 | 0.5675018873784681 |
+| Norah Jones input contribution | 0.3780843674411006 | 0.43249811262153187 |
+
+Each proposal referenced all three actual evidence entries for its selected
+book; these provider values are not probabilities or a proof of suitability.
+Activities/invitations are generated proposals requiring organizer review.
+Changing to INR 300 invalidated A's Apply action. The edited Guide title and
+notes survived both previews while Guide remained eligible. **Explicit Apply of
+B passed**, selecting Guide and populating the revised title/materials in the
+editable outline; existing draft replacement occurred only at that action.
+Desktop and 390px live screenshots were captured, with no document horizontal
+overflow. Visual inspection found readable wrapping, single-column mobile book
+cards, and planner/outline controls contained within their panels; desktop
+columns remain intact. Controlled Chromium checks also cover keyboard navigation, explicit
+cancellation, late responses, Reset/Load example, and CSV contracts.
+
+Task totals: **four Gemini requests, two Qloo requests, zero probes, zero
+repairs, zero automatic retries**. Live execution stopped after the requested
+two turns; no further provider calls were made. A missed the **10–15 second**
+target, chiefly in its 17.961-second final model request; B met it. Both stayed
+within the new deadline. Two successful local turns establish live acceptance,
+not sustained provider latency, quota availability, recommendation quality, or
+public reliability. Prior HTTP 503/429/timeout evidence above is preserved.
+
 ## Artifacts and remaining limits
 
 - `playwright-report/index.html`: complete automated browser report.
 - `test-results/results.json`: machine-readable browser results.
+- `artifacts/playwright/event-agent-responsive-results.json`: actual A/B stage
+  timings, grounded proposal summaries, explicit Apply, and four/two totals.
+- `artifacts/playwright/gemini-responsive-server-config.json`: effective local
+  model, configuration source, preview origin, and starting checkpoint only.
+- `artifacts/playwright/event-agent-responsive-a-desktop.png` and
+  `event-agent-responsive-b-desktop.png`: actual previews before/after Apply.
+- `artifacts/playwright/event-agent-responsive-mobile-390.png`: full-page
+  actual live revision and applied outline; no horizontal document overflow.
 - `test-results/<event-agent-Generate-test>/event-proposal-workspace-desktop.png`:
   controlled desktop preview with a preserved edited outline.
 - `test-results/<event-agent-390px-test>/event-proposal-workspace-mobile-390.png`:

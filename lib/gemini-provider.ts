@@ -57,7 +57,7 @@ const origin = "https://generativelanguage.googleapis.com";
 const endpoint = "/v1beta/interactions";
 const maximumRequestBytes = 128 * 1024;
 const maximumResponseBytes = 256 * 1024;
-const maximumDeadlineMs = 60_000;
+const maximumDeadlineMs = 20_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

@@ -48,10 +48,12 @@ export async function handleEventRequest(request: Request) {
   }
   // Explicit key avoids GOOGLE_API_KEY precedence; no credential enters client props.
   const geminiKey = (process.env.GEMINI_API_KEY ?? "").trim();
+  const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const qlooConfigured = !!process.env.QLOO_API_KEY?.trim();
   const geminiConfigured = !!geminiKey.trim();
   const agent = createEventAgent({ geminiConfigured, qlooConfigured,
-    ...(geminiConfigured ? { gemini: createGeminiProvider({ apiKey: geminiKey, model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
+    thinkingLevel: geminiModel === "gemini-3.5-flash-lite" ? "minimal" : "low",
+    ...(geminiConfigured ? { gemini: createGeminiProvider({ apiKey: geminiKey, model: geminiModel,
       onDiagnostic: (diagnostic) => console.error("[AfterHours Gemini]", JSON.stringify(diagnostic)),
       onResponse: (snapshot) => console.info("[AfterHours Gemini response]", JSON.stringify(snapshot)),
     }) } : {}),

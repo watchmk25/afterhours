@@ -293,6 +293,50 @@ test("pending generation permits one call, Cancel releases the UI, and a late re
   expect(calls.requests).toHaveLength(2);
 });
 
+test("a pending regeneration shows loading immediately and a deadline failure preserves edits without reviving Apply", async ({ page }) => {
+  const pending = deferred();
+  const message = "The planning run reached its overall deadline. No proposal was applied.";
+  const calls = await mockAgent(page, async (route, _body, index) => {
+    if (index === 1) {
+      await route.fulfill({ json: proposalResponse() });
+      return;
+    }
+    await pending.promise;
+    await route.fulfill({ status: 504, json: {
+      ok: false, error: { code: "RUN_TIMEOUT", message },
+      trace: [{ action: "gemini", status: "failed", detail: "The run deadline ended this controlled test." }],
+      usage: { geminiRequests: 1, qlooRequests: 0 },
+    } satisfies EventAgentResponse });
+  });
+  await openExample(page);
+  await makeGuideDraft(page);
+  await confirmPreset(page);
+  await generate(page);
+  await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
+  await expect(planner(page).getByRole("status").filter({ hasText: /^Preparing proposal/ })).toBeVisible();
+  await expect(planner(page).getByRole("button", { name: "Cancel generation", exact: true })).toBeEnabled();
+  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
+  await expect(planner(page).getByRole("button", { name: "Revise proposal", exact: true })).toBeDisabled();
+  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
+  await expectGuideDraft(page);
+  const pendingNotes = `${draftNotes} Edited while waiting.`;
+  await page.getByLabel("Organizer notes", { exact: true }).fill(pendingNotes);
+  await expect.poll(() => calls.requests.length).toBe(2);
+  // Enter edits the focused textarea; it must not submit another generation.
+  await page.keyboard.press("Enter");
+  expect(calls.requests).toHaveLength(2);
+  pending.resolve();
+  await expect(planner(page).getByRole("alert")).toHaveText(message);
+  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
+  await expect(planner(page).getByRole("button", { name: "Cancel generation", exact: true })).toHaveCount(0);
+  await expect(preview(page).getByRole("status")).toContainText("This preview is stale.");
+  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
+  await expect(shelf(page).getByRole("button", { name: "Selected: The Guide", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(draftTitle);
+  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue(`${pendingNotes}\n`);
+  expect(calls.requests, "The failed attempt must neither retry nor reactivate the previous proposal").toHaveLength(2);
+});
+
 for (const context of ["filters", "interests", "request", "duration"] as const) {
   test(`${context} A-to-B-to-A changes never revive an old proposal's Apply action`, async ({ page }) => {
     const calls = await mockAgent(page);
