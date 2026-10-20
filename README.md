@@ -4,7 +4,7 @@ A local organizer workspace for independent bookstores and book clubs. Start wit
 
 **Qloo matching and Gemini event planning are available on explicit request for supported sample books.** The default inventory is illustrative. Imported CSV inventory keeps local filtering and fixed event templates; live matching and planning do not support imported rows in this slice.
 
-The planner's controlled checks pass, but **live Gemini proposal/revision remains UNVERIFIED**. The tool-choice HTTP 400 is corrected, and local deadlines now allow up to 60 seconds per Gemini request within a 150-second run. The isolated live tool-call probe returned HTTP 503 `service_unavailable` (model high demand) after 7.284 seconds; no Qloo tool was executed. See [the actual verification and blocker](docs/event-agent.md).
+The planner's controlled checks pass, but **live Gemini proposal/revision remains UNVERIFIED**. The tool-choice HTTP 400 is corrected, with local limits of 60 seconds per Gemini request and 150 seconds per run. The preserved 3.8 probe returned HTTP 503 after 7.284 seconds. An explicit local `gemini-3.6-flash` probe received HTTP 200 after 2.886 seconds, but the adapter rejected the response as `GEMINI_BAD_RESPONSE`; no native tool call was verified or executed. See [the actual verification and blocker](docs/event-agent.md).
 
 ## Run locally
 

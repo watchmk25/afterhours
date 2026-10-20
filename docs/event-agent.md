@@ -183,7 +183,7 @@ probe was made. Both live proposals, fresh Qloo tool execution, native
 continuation, exact agenda totals, and live Apply remain **UNVERIFIED**.
 Controlled tests verify these contracts only with synthetic providers.
 
-## Deadline alignment and isolated probe (current verification)
+## Deadline alignment and 3.8 probe (checkpoint 64bc2c2)
 
 Offline tracing identifies the old provider wrapper's `20_000` ms timer as the
 observed cutoff, not browser cancellation or the overall agent timer. The pinned
@@ -232,13 +232,73 @@ final proposal schema was supplied. Qloo execution was disabled in this probe.
 | B: revise at INR 300 | Not attempted | **UNVERIFIED**: no valid first proposal exists. | None |
 | Explicit Apply | Not attempted | **UNVERIFIED** with live output. | None |
 
-**Current task total: one Gemini request, zero Qloo requests.** The last
+**That task's total: one Gemini request, zero Qloo requests.** The last
 successful stage was receiving the upstream HTTP response; the failing stage was
 provider availability. No successful native interaction, function call, text
 output, ranking, proposal, repair, or Apply was observed. No unchanged request
 was repeated. HTTP 503 does not prove valid authentication or explain the earlier
 generation latency. The model and retries remain unchanged; live acceptance
 requires a later authorized attempt when provider availability permits it.
+
+## Explicit Gemini 3.6 Flash verification (current attempt)
+
+At the user's request, only `GEMINI_MODEL` was changed in ignored `.env.local`
+to **`gemini-3.6-flash`**. All other parsed settings were compared internally and
+preserved, including both credentials. The file remains ignored and untracked;
+no credential values or raw environment contents were displayed.
+
+Google's [model documentation](https://ai.google.dev/gemini-api/docs/models/gemini-3.6-flash)
+lists function calling, structured output, and thinking support. The current
+[Interactions guide](https://ai.google.dev/gemini-api/docs/interactions-overview)
+lists this model, and [thinking documentation](https://ai.google.dev/gemini-api/docs/thinking)
+supports `low`. [Standard pricing](https://ai.google.dev/gemini-api/docs/pricing)
+lists free-tier input/output tokens; that does not establish access or quota for
+this particular project. No billing setting was changed.
+
+Both the existing probe and the isolated Next.js production preview resolved
+`gemini-3.6-flash` from `.env.local`, with no inherited `GEMINI_MODEL` override.
+Production environment precedence was checked through the installed `@next/env`
+loader. The actual Next.js CLI started with that verified environment at
+`http://localhost:3100`; the runtime handler reads `process.env.GEMINI_MODEL`.
+No existing server was stopped or restarted. This task's own preview was stopped
+after the configuration check. The model setting remains in `.env.local`.
+
+SDK **2.30.0**, Developer API `v1beta`, low thinking, 4096 output tokens, plain
+initial `auto`, 60/150-second limits, validation, cancellation, and disabled
+retries were unchanged. There was no runtime model fallback or provider change.
+The existing helpers were copied to separate ignored 3.6 artifact paths, keeping
+the original 3.8 HTTP 503 evidence intact. The prepared browser helper requires
+the corresponding probe to succeed before it can send either user turn.
+
+| Stage | Model | Measured elapsed | Actual result | Requests |
+|---|---|---|---|---|
+| Isolated native tool-call probe | `gemini-3.6-flash` | **2,886 ms** | Transport received **HTTP 200**; adapter returned **`GEMINI_BAD_RESPONSE`**. No deadline fired. | 1 Gemini, 0 Qloo |
+| A: generate, INR 450, 45 minutes | Same configured model | Not attempted | **UNVERIFIED**: no validated native probe result. | 0 |
+| B: revise, INR 300 | Same configured model | Not attempted | **UNVERIFIED**: no valid first proposal exists. | 0 |
+| Preview and explicit Apply | Same configured model | Not attempted | **UNVERIFIED** with live output. | 0 |
+
+**Current task total: one Gemini request and zero Qloo requests.** HTTP 200 is
+an observed transport outcome, not a verified native function call or proposal.
+No usable function/text result, provider error code/message, native tool trace,
+Qloo ranking, selected book, agenda, revision, or applied draft was available.
+
+The existing probe retained status, elapsed time, and the fixed adapter error,
+but did not retain the response body or its sanitized structural shape after
+the adapter rejected it. Consequently the specific failed check is **unknown**.
+Offline SDK review shows `steps` can be omitted on the wire and normalized by
+the SDK, whereas the guard requires it; this is only a hypothesis for this
+response. Content type, body bounds/parsing, required ID/status fields, and SDK
+response handling also remain possible failure points. No field was invented
+or validation changed without observed evidence, and no unchanged failing
+request was repeated. A later authorized diagnostic must retain a bounded,
+sanitized structural summary before rejection to identify the concrete cause.
+
+No tracked application code or dependencies changed. The prior checkpoint's
+**199 Node tests, 46 Chromium production regressions, lint, TypeScript, and
+production build** were reused for unchanged code, as requested. Only the local
+model/precedence checks, helper syntax checks, documentation diff check, and
+this one live probe were performed in this task. The tracked example remains
+`gemini-3.8-flash` because a working 3.6 agent configuration was not verified.
 
 ## Artifacts and remaining limits
 
@@ -257,13 +317,19 @@ requires a later authorized attempt when provider availability permits it.
   trace, deadline failure, and total counts including the diagnostic.
 - `artifacts/playwright/event-agent-fixed-stopped.png`: corrected live UI with
   the deadline error and preserved existing outline.
-- `artifacts/playwright/gemini-deadline-probe.json`: current isolated probe's
+- `artifacts/playwright/gemini-deadline-probe.json`: preserved 3.8 isolated probe's
   measured elapsed time, HTTP status, sanitized provider code/explanation, and
   one-request count. No raw response or opaque model steps are retained.
 - `artifacts/playwright/probe-gemini-deadline.mjs`: manually invoked one-probe
   helper, refusing a second attempt when its evidence file already exists.
 - `artifacts/playwright/verify-gemini-deadline.mjs`: prepared standalone two-turn
   browser helper with a 170-second response wait; not run because the probe failed.
+- `artifacts/playwright/gemini-36-probe.json`: current 3.6 probe's observed HTTP
+  200, 2,886 ms elapsed time, fixed adapter error, and one-request count.
+- `artifacts/playwright/gemini-36-server-config.json`: only the nonsecret model,
+  configuration source, local preview origin, and tested source checkpoint.
+- `artifacts/playwright/probe-gemini-36.mjs` and `verify-gemini-36.mjs`: existing
+  bounded helpers adapted to separate 3.6 evidence paths. Browser turns were not run.
 
 Generated artifacts stay ignored. Desktop/390px and actual keyboard interactions
 are covered in Chromium; other browsers and physical devices are unverified.
