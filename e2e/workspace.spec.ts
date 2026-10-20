@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./fixtures";
 import { createDefaultInputs, LANGUAGES } from "../lib/workspace";
 
 const exampleTitles = ["Malgudi Days", "The Blue Umbrella", "The Guide"];

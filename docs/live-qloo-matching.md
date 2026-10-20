@@ -127,5 +127,8 @@ Chromium/emulated layouts were verified; other browsers and physical devices
 were not. Imported catalogues remain session-only local filtering/template data
 and cannot use sample Qloo mappings. Search confirmations expire, unassessed
 books are not declared absent from Qloo, and explanation fields may be omitted
-by the provider. AI planning and authentication remain unconnected. This work
-does not deploy or enable credentials on the public website.
+by the provider. At this historical matching checkpoint AI planning and
+authentication were unconnected. The later [event-agent record](event-agent.md)
+documents live planning, and the [hosted Preview record](hosted-preview.md)
+covers protected release verification. The public production website remains
+unchanged; application authentication is still deferred.

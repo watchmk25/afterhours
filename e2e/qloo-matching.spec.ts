@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "./fixtures";
 import { QLOO_PRESETS } from "../lib/qloo-sample";
 import type { QlooInterest, QlooRankRequest, QlooRankResponse, QlooSearchResponse } from "../lib/qloo-types";
 

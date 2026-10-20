@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
+import { expect, test, type Locator, type Page, type Route } from "./fixtures";
 import { SAMPLE_CATALOGUE } from "../lib/catalogue";
 import { QLOO_PRESETS } from "../lib/qloo-sample";
 import type { EventAgentInput, EventAgentResponse, EventProposal, ProposalDraft } from "../lib/event-types";

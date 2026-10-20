@@ -547,9 +547,10 @@ public reliability. Prior HTTP 503/429/timeout evidence above is preserved.
 
 Generated artifacts stay ignored. Desktop/390px and actual keyboard interactions
 are covered in Chromium; other browsers and physical devices are unverified.
-Inputs/proposals/drafts are session-only, and the credential-enabled app should
-remain local pending public access/quota controls. Main and the existing public
-website were not changed or deployed.
+Inputs/proposals/drafts are session-only. Credential-enabled operation is limited
+to local use or an access-protected Preview pending shared access/quota controls.
+See [the protected hosted release record](hosted-preview.md). Main and the
+existing public production website remain unchanged.
 
 Sources: Google's [native function calling](https://ai.google.dev/gemini-api/docs/function-calling),
 [supported thinking levels](https://ai.google.dev/gemini-api/docs/thinking),

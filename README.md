@@ -78,7 +78,7 @@ Only explicit search and rank actions call the server. Each action makes at most
 
 Filters, confirmed interests, catalogue replacement, Load example, and Reset invalidate old rankings. Responses from older requests are ignored. Ranking never selects or switches a book, and an edited event outline survives while its selected book stays eligible. Invalid/cancelled CSV previews preserve the active inventory, selection, draft, and matching state. Confirming replacement clears the selected book and outline, preserves favourites, and invalidates ranking. Errors and missing explanation fields are shown honestly, without substituting saved experiment results.
 
-This local flow has no login, persistent storage, quota management, or public-service abuse controls. Keep its credential-enabled server local. This feature branch does not change the existing public deployment or configure hosted credentials.
+This flow has no application login, persistent storage, shared quota management, or public-service abuse controls. Credential-enabled operation is limited to local use or an access-protected Preview. The existing public production deployment remains unchanged. See [hosted preview preparation and release controls](docs/hosted-preview.md).
 
 See [the live-matching verification record](docs/live-qloo-matching.md) for the automated checks, three-request live check, actual ordering/affinity values, and remaining limits. Recorded results are documentation only and are never imported into the runtime.
 
@@ -105,7 +105,7 @@ Explicit conflicts between prose and structured price/page/duration limits, and 
 
 Changes to filters, interests, the request, or duration invalidate the preview, including a change back to the former values. Late responses are ignored; cancellation aborts local/server work where possible but cannot retract an upstream request already dispatched. Reset and Load example clear planner state. Invalid/cancelled CSV previews preserve it; confirming import or restoring samples invalidates it and follows the existing selection/outline rules. Imported catalogues cannot use live matching or planning.
 
-Routine Node and Chromium tests use controlled provider fixtures and make **zero live calls**. See [the event-agent verification record](docs/event-agent.md) for actual automated and live results. This feature is local and session-only; main, Vercel settings, and the public deployment are unchanged. There is no login, persistent storage, provider framework, or automatic application/publishing of a proposal.
+Routine Node and Chromium tests use controlled provider fixtures and make **zero live calls**. See [the event-agent verification record](docs/event-agent.md) for actual automated and live results and [protected hosted preview instructions](docs/hosted-preview.md). Workspace state is session-only; main and the public production deployment are unchanged. There is no application login, persistent storage, provider framework, or automatic application/publishing of a proposal.
 
 The protocol follows Google's current [function-calling](https://ai.google.dev/gemini-api/docs/function-calling), [structured-output](https://ai.google.dev/gemini-api/docs/structured-output), [Gemini 3.5 Flash Lite](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-flash-lite), and [thinking-level](https://ai.google.dev/gemini-api/docs/thinking) documentation. Provider access and quota depend on the configured credential; configuration alone does not verify a live run.
 
@@ -186,6 +186,17 @@ CLI deployments use the tracked `.vercelignore` to exclude actual environment fi
 - `artifacts/playwright/`: retained screenshots and the original failure trace from the visual review during this setup.
 
 Generated reports and artifacts are ignored by Git and ESLint. Playwright replaces `test-results/` and `playwright-report/` on subsequent runs; copy a run's artifacts elsewhere before rerunning when you need to retain its history. Browser installation and launch can require local permission for downloads, browser processes, and test workers.
+
+For an access-protected Vercel Preview, the runner also accepts process-only
+`VERCEL_AUTOMATION_BYPASS_SECRET` with an explicit HTTPS `PLAYWRIGHT_BASE_URL`.
+Obtain authorized access through secure provider tooling; do not paste its value
+into commands, source, or reports. The test transport adds authorization inside
+Node fetch only for that exact Preview origin. It never adds secret headers to
+Playwright configuration, browser requests, cookies, URLs, or traces. Existing
+page fixtures intercept provider actions; an additional context guard blocks
+unmocked provider routes. Omitting the secret preserves the anonymous/local
+preflight. This authorized mode verifies protected functionality, not anonymous
+visitor access. See [the release record](docs/hosted-preview.md).
 
 ## Optional Qloo connection smoke check
 
@@ -272,4 +283,4 @@ The probe reuses the actual catalogue and default workspace filters, keeps local
 
 All inputs, confirmed interests, rankings, proposals, choices, and outline edits live only in the current page session and are lost on reload. Live matching and event planning cover only confidently mapped, eligible sample books and explicit confirmed film/musician signals. They do not resolve imported inventory or automatically interpret audience notes. Gemini proposes activities, not narrative cultural explanations or verified book analysis. Eligibility and affinity do not establish reader suitability or availability at a real shop.
 
-Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, and broader entity resolution are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. The existing public deployment remains unchanged; hosted matching/planning would require separate review, access controls, and server configuration.
+Authentication, databases, persistent/server catalogue uploads, exports, retailer/live-inventory synchronization, and broader entity resolution are deferred. Import is capped at 256 KiB/500 rows and stores no drafts or catalogue across reloads. The fixture catalogue is intentionally small. The existing public production deployment remains unchanged. A protected Preview does not make matching/planning ready for anonymous release: shared quotas, concurrency/spending limits, an access policy, and monitoring remain necessary.

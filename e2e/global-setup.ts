@@ -1,4 +1,5 @@
 import { request, type FullConfig } from "@playwright/test";
+import { fetchProtectedPreview, protectedPreview } from "./support/protected-preview";
 
 // Reject a different app or visitor protection before browser interactions.
 // This context deliberately has no existing browser cookies or credentials.
@@ -6,6 +7,19 @@ export default async function verifyAfterHours(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL;
   if (!baseURL) {
     throw new Error("AfterHours browser tests require a configured baseURL.");
+  }
+
+  const protection = protectedPreview();
+  if (protection) {
+    if (baseURL !== protection.origin) throw new Error("Protected Preview origin must match the explicit browser target.");
+    const response = await fetchProtectedPreview(protection, baseURL, { timeoutMs: 15_000 });
+    const html = response.body.toString("utf8");
+    if (response.status !== 200 || !/<title>AfterHours\b[^<]*<\/title>/.test(html) ||
+      !html.includes('id="workspace"') || !html.includes('id="eligible-books"') || !html.includes('id="event-outline"')) {
+      throw new Error("Protected Preview preflight did not return the AfterHours workspace. Check authorized access and the exact deployment target; no redirect or local fallback was followed.");
+    }
+    console.log(`Verified authorized protected AfterHours Preview: ${protection.origin}`);
+    return;
   }
 
   const isDefaultLocalTarget = process.env.PLAYWRIGHT_BASE_URL === undefined;
