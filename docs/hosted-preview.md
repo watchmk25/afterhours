@@ -2,6 +2,9 @@
 
 For the subsequent audience-setup, applied-context, cancellation, and duration
 corrections with zero live calls, see the [audience-to-event verification record](audience-event-journey.md).
+Its [current protected Preview](https://afterhours-6p14f62rq-sam-3b2d.vercel.app)
+deploys `7e88b81174371ab66dcd989340e5ee34026f6b35` and passed all 51 controlled
+hosted Chromium checks. Anonymous access remains blocked by Vercel SSO.
 The deployment and live timings below describe the earlier release checkpoint.
 
 This release stays on `feat/event-agent`; [draft PR #3](https://github.com/watchmk25/afterhours/pull/3)

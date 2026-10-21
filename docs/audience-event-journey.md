@@ -111,11 +111,44 @@ zero forbidden environment/generated paths. Use the existing deployment-only
 server runtime credential workflow with bare variable names; values never
 enter command arguments, build variables, source uploads, or browser code.
 
-Deployment and hosted controlled-suite results will be recorded after the
-reviewed application commit is deployed. Verification uses the same-project
-short-lived OIDC identity solely inside the exact-origin Node transport, never
-browser headers/storage/config/traces/URLs. The shared fixture blocks unmocked
-provider routes. This task's helper has no live-generation operation.
+The protected Preview is
+[afterhours-6p14f62rq-sam-3b2d.vercel.app](https://afterhours-6p14f62rq-sam-3b2d.vercel.app),
+deployment `dpl_4PiDSmScbtJpyXNL4X7TAyRJ65Dd`, deployed application commit
+`7e88b81174371ab66dcd989340e5ee34026f6b35`
+(`Improve audience setup and applied event context`). Vercel reported READY.
+Subsequent verification-documentation changes do not alter deployed runtime.
+
+**All 51 Chromium regressions also passed against this protected Preview**
+(one worker, zero retries, 1.8 minutes), using controlled fixtures. The actual
+hosted 390px applied-context screenshots were inspected: interests, saved
+filters, long numerical references, warnings, stale notice/link, cards, and all
+edited fields remain readable with no horizontal overflow. The protected CSV
+check retains its existing actual-hosted-bytes Node/Blob adaptation; the separate
+cookie-authenticated native-download path is not verified by that adapter.
+
+Verification used the same-project short-lived OIDC identity solely inside
+the exact-origin Node transport, never browser headers/storage/config/traces/
+URLs. The shared fixture blocked unmocked provider routes; the helper invoked
+only Playwright and has no live-generation operation. **Zero live Gemini and
+zero live Qloo requests** were made. No new provider availability or latency
+result is inferred from fixture timings.
+
+After the run, the child identity was discarded and the plain URL still returned
+HTTP **302 to Vercel SSO**, confirming anonymous access remains protected.
+Production deployment, persistent project/Production environment variables,
+SSO protection, and project bypass count were unchanged; no bypass was added.
+Main remains `574ca8cc0070caefd99ee52743cad3b2bbe45ba4`; PR #3 stays draft.
+
+Retained ignored evidence:
+
+- `artifacts/playwright/audience-hosted-regressions.log` and
+  `audience-hosted-browser-results.json`: actual hosted suite results.
+- `artifacts/playwright/audience-hosted-applied-filters-390.png` and
+  `audience-hosted-applied-audience-390.png`: expanded evidence and preserved edits.
+- `artifacts/playwright/audience-preview-verification.json`: deployed source,
+  successful controlled suite, anonymous protection, and unchanged hosting checks.
+- `playwright-report/index.html` and `test-results/results.json`: latest hosted
+  HTML/JSON report. All generated evidence remains ignored by Git and deployment.
 
 Remaining limitations: session-only edits/context, sample-only live support,
 partial catalogue mappings, conservative duration/prose validation, and no
