@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "node --experimental-strip-types --test --test-isolation=none tests/*.test.ts",
     "test:e2e": "playwright test",
+    "usage": "node --experimental-strip-types scripts/usage-check.mts",
     "usage:check": "node --experimental-strip-types scripts/usage-check.mts",
     "qloo": "node scripts/qloo-smoke.mjs",
     "qloo:feasibility": "node --experimental-strip-types scripts/qloo-feasibility.mjs",

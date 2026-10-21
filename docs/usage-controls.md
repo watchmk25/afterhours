@@ -85,14 +85,38 @@ Ordinary local Next.js requests have no trustworthy hosting IP header and fail c
 After privately configuring the account-owned Free database, run:
 
 ```sh
-npm run usage:check
+npm run usage
 ```
 
-The helper uses existing `@next/env` loading, so inherited process values take precedence over ignored `.env.local`. It imports no provider integration and makes no Qloo/Gemini requests. It uses a random `afterhours:usage:check:<uuid>` namespace, synthetic visitor hashes, and **at most eight Redis REST requests**, each under the same one-second bound.
+`npm run usage:check` remains an alias for the same helper. The helper uses existing `@next/env` loading, so inherited process values take precedence over ignored `.env.local`. It imports no provider integration and makes no Qloo/Gemini requests. It uses a random `afterhours:usage:check:<uuid>` namespace, synthetic visitor hashes, and **at most eight Redis REST requests**, each under the same one-second bound.
 
 The check admits two events through separate control instances, verifies denial of a third simultaneous admission, releases one run's lease, verifies a new admission, and deletes only its five exact temporary keys. A successful result requires confirmed cleanup. If cleanup cannot be confirmed, all temporary data has existing bounded TTLs, at most 24 hours, and the result remains UNVERIFIED. It never scans or clears unrelated keys.
 
 Without both REST credentials the helper prints a fixed sanitized UNVERIFIED summary, reports zero requests, and exits 2. With credentials, success exits 0; failure or unconfirmed cleanup exits 1 and reports only sanitized stage/count information. Do not infer provider access, public usability, account ownership, Free-plan settings, trusted-host header handling, or anonymous abuse resistance from this store-only result.
+
+The diagnostic now records only fixed stage/outcome names, elapsed milliseconds, HTTP status actually observed, and a known deadline flag. It retains the first failure even if later cleanup succeeds, and starts no new admissions after an observed failure. A failed release cannot be swallowed into a passing check. HTTP 200 parsing/Redis-error failures remain a combined category when the cause is not observable; raw responses and errors are never printed. No credentials, URLs, headers, Redis contents, namespace/key names, or provider payloads appear in the summary.
+
+`cleanupAcknowledged` means the exact-key delete returned a valid result. `cleanupConfirmed` is more conservative: a prior transport failure or timeout can leave an unresolved write that may complete after deletion on another connection, so acknowledgment alone cannot confirm absence of late writes. Such a result remains UNVERIFIED with the TTL limitation; the check makes no extra probe or retry to resolve that uncertainty.
+
+### Configuration verification follow-up — 2026-10-21
+
+The saved ignored `.env.local` and effective process configuration were inspected without displaying values. Required `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` assignments were both **missing**, with no inherited overrides. Their format/authentication therefore could not be verified. The absent visitor secret was generated cryptographically and saved directly to `.env.local` without printing it. Its parsed value is present and valid. `AFTERHOURS_LIVE_ENABLED=false` is explicit in both local and effective configuration. Existing Qloo/Gemini settings were preserved; no Vercel runtime flag or trusted header was fabricated.
+
+The requested `npm run usage` command was invoked **once** after offline checks. Actual result:
+
+| Field | Observed result |
+| --- | --- |
+| Real store | **UNVERIFIED**: Upstash Redis REST credentials are not configured. |
+| Last stage | Configuration. |
+| Redis requests | **0**, under the eight-request maximum. |
+| HTTP status / timeout | No HTTP response; no store operation or deadline started. |
+| Cleanup acknowledged / confirmed | Both false; no temporary keys were created, so no cleanup was needed. |
+| Qloo / Gemini requests | **0 / 0**. |
+| Production counters | Untouched. |
+
+No further live/store attempt was made after this configuration failure. Save the account-owned Free database's REST URL/token under those exact names in ignored server configuration before requesting a new bounded check. Keep the live switch false. Account ownership, Free-plan/eviction settings, real Redis behavior, and trusted hosting remain unverified.
+
+For the diagnostic-only code changes, full lint and explicit TypeScript checks passed. **34 focused offline tests passed**, including eight new manual-check tests: actual admission Lua and isolated cleanup, missing/invalid configuration, first HTTP failure retention, swallowed release failure, malformed responses, fetch/body deadlines and cleanup uncertainty, cleanup failure preventing PASS, and fake-secret-safe output. Runtime application code, dependencies, and provider deadlines did not change. The full application/build/Chromium suites were not repeated; their earlier results below remain historical. The local environment file remains ignored and untracked.
 
 ## Offline checks and release boundaries
 

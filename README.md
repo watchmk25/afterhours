@@ -8,7 +8,7 @@ A local organizer workspace for independent bookstores and book clubs. Start wit
 
 **Last protected hosted preview verification:** all **51 Chromium regressions** passed locally and on the audience/context Preview with controlled fixtures and **zero live Gemini/Qloo calls**. That follow-up adds a usable confirmed example and retained applied-event evidence/context. The preview requires authorized Vercel access; production remains unchanged. See the [Preview, checks, screenshots, and limitations](docs/audience-event-journey.md). The earlier real hosted generation rendered in **4.246 seconds**, assessed 3 of 6 eligible books, preserved edits until Apply, and applied The Namesake using two Gemini requests and one Qloo ranking; that [historical live result](docs/hosted-preview.md) is not a live test of the shared usage controls below.
 
-**Shared usage controls are prepared, with live work disabled by default. Real Upstash verification is UNVERIFIED because Redis credentials are absent; no database was provisioned.** See [configuration, conservative limits, and verification boundaries](docs/usage-controls.md). This preparation makes zero live Qloo/Gemini calls.
+**Shared usage controls are prepared, with live work disabled by default. The latest Redis-only check is UNVERIFIED: the saved Upstash REST URL/token are missing, and the one command invocation made zero Redis/provider requests.** The local visitor secret was generated privately and the live switch remains false. See [configuration, conservative limits, and actual verification](docs/usage-controls.md). No database was provisioned.
 
 ## Run locally
 
@@ -80,10 +80,10 @@ Admission uses one atomic Redis Lua operation, built-in server fetch with a one-
 Run the optional Redis-only check manually after configuring the account-owned database:
 
 ```sh
-npm run usage:check
+npm run usage
 ```
 
-It makes **zero provider calls**, uses an isolated random temporary namespace, permits at most **8 Redis requests**, and attempts cleanup. Without Redis credentials it reports **UNVERIFIED**, exits 2, and makes zero Redis requests. Current real-store status is **UNVERIFIED**. This check does not establish live provider access, trusted hosting headers, account ownership, or plan settings. See [the complete controls, cleanup behavior, tests, and remaining release work](docs/usage-controls.md).
+`npm run usage:check` remains an alias. The check makes **zero provider calls**, uses an isolated random temporary namespace, permits at most **8 Redis requests**, and attempts cleanup. Without Redis credentials it reports **UNVERIFIED**, exits 2, and makes zero Redis requests. Sanitized stage/status/timeout evidence preserves the first failure; new admissions stop after failure, and PASS requires confirmed cleanup. Current real-store status is **UNVERIFIED**. This check does not establish live provider access, trusted hosting headers, account ownership, or plan settings. See [the complete controls, cleanup behavior, tests, and remaining release work](docs/usage-controls.md).
 
 ## Live Qloo matching (sample catalogue only)
 
