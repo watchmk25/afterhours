@@ -59,4 +59,4 @@ export type EventUsage = { geminiRequests: number; qlooRequests: number };
 
 export type EventAgentResponse =
   | { ok: true; result: EventValidatedOutput; trace: AgentAction[]; usage: EventUsage }
-  | { ok: false; error: { code: string; message: string; upstreamStatus?: number }; trace: AgentAction[]; usage: EventUsage };
+  | { ok: false; error: { code: string; message: string; upstreamStatus?: number }; trace: AgentAction[]; usage: EventUsage | null };

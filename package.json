@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "node --experimental-strip-types --test --test-isolation=none tests/*.test.ts",
     "test:e2e": "playwright test",
+    "usage:check": "node --experimental-strip-types scripts/usage-check.mts",
     "qloo": "node scripts/qloo-smoke.mjs",
     "qloo:feasibility": "node --experimental-strip-types scripts/qloo-feasibility.mjs",
     "qloo:smoke": "node scripts/qloo-smoke.mjs"
@@ -31,6 +32,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wasmoon": "1.16.0"
   }
 }

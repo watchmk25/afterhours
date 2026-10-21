@@ -213,6 +213,13 @@ export function createQlooService({
     return { filters, interests: [...unique.values()], eligible, supported };
   }
 
+  function prepareSearch(value: unknown): { query: string; kind: InterestKind } {
+    const input = boundedInput(value);
+    if (!exactKeys(input, ["query", "kind"]) || !validText(input.query, 100) ||
+      (input.kind !== "movie" && input.kind !== "artist")) invalid("Enter a film or musician name of 1 to 100 characters.");
+    return { query: input.query.trim(), kind: input.kind };
+  }
+
   async function request(path: "/search" | "/v2/insights", params: Record<string, string | number | boolean>, externalSignal?: AbortSignal): Promise<JsonRecord> {
     if (!key) throw new ServiceError(503, "QLOO_NOT_CONFIGURED", "Qloo is not configured on this server. Sample filtering and event templates remain available.");
     const cancelled = () => new ServiceError(499, "QLOO_CANCELLED", "The Qloo request was cancelled.");
@@ -263,17 +270,18 @@ export function createQlooService({
   }
 
   return {
+    prepareSearch(value: unknown): QlooServiceResult<({ ok: true; query: string; kind: InterestKind }) | { ok: false; error: QlooError }> {
+      try { return { status: 200, body: { ok: true, ...prepareSearch(value) } }; }
+      catch (error) { return failure(error); }
+    },
     prepareRank(value: unknown): QlooServiceResult<({ ok: true } & QlooPreparedRanking) | { ok: false; error: QlooError }> {
       try { return { status: 200, body: { ok: true, ...prepareRanking(value) } }; }
       catch (error) { return failure(error); }
     },
     async search(value: unknown, signal?: AbortSignal): Promise<QlooServiceResult<QlooSearchResponse>> {
       try {
-        const input = boundedInput(value);
-        if (!exactKeys(input, ["query", "kind"]) || !validText(input.query, 100) ||
-          (input.kind !== "movie" && input.kind !== "artist")) invalid("Enter a film or musician name of 1 to 100 characters.");
-        const kind: InterestKind = input.kind;
-        const body = await request("/search", { query: input.query.trim(), types: `urn:entity:${kind}`, take: 3 }, signal);
+        const { query, kind } = prepareSearch(value);
+        const body = await request("/search", { query, types: `urn:entity:${kind}`, take: 3 }, signal);
         if (!Array.isArray(body.results) || body.results.length > 3) schemaError();
         const used = new Set<string>();
         const candidates = body.results.map((item): QlooInterest => {

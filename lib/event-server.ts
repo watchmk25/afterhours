@@ -1,8 +1,10 @@
 import "server-only";
 import { createEventAgent } from "./event-agent.ts";
-import { MAX_EVENT_INPUT_BYTES } from "./event-validation.ts";
+import { MAX_EVENT_INPUT_BYTES, parseEventInput } from "./event-validation.ts";
 import { createGeminiProvider } from "./gemini-provider.ts";
 import { createRuntimeQlooService } from "./qloo-server.ts";
+import { admitRequestUsage } from "./usage-runtime.ts";
+import { runWithUsage } from "./usage-run.ts";
 
 const headers = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 function rejected(status: number, message: string) {
@@ -51,14 +53,33 @@ export async function handleEventRequest(request: Request) {
   const geminiModel = process.env.GEMINI_MODEL || "gemini-3.8-flash";
   const qlooConfigured = !!process.env.QLOO_API_KEY?.trim();
   const geminiConfigured = !!geminiKey.trim();
+  const qloo = createRuntimeQlooService(1);
   const agent = createEventAgent({ geminiConfigured, qlooConfigured,
     thinkingLevel: geminiModel === "gemini-3.5-flash-lite" ? "minimal" : "low",
     ...(geminiConfigured ? { gemini: createGeminiProvider({ apiKey: geminiKey, model: geminiModel,
       onDiagnostic: (diagnostic) => console.error("[AfterHours Gemini]", JSON.stringify(diagnostic)),
       onResponse: (snapshot) => console.info("[AfterHours Gemini response]", JSON.stringify(snapshot)),
     }) } : {}),
-    qloo: createRuntimeQlooService(1),
+    qloo,
   });
-  const result = await agent.run(value, request.signal);
+  // Reuse the existing pure preflight before reserving the conservative maximum.
+  // Early validation/clarification/configuration failures cannot call providers.
+  const parsed = parseEventInput(value);
+  if (!parsed.ok || !geminiConfigured || !qlooConfigured || !qloo.prepareRank({
+    catalogueSource: "sample", filters: parsed.input.filters, interests: parsed.input.interests,
+  }).body.ok) {
+    const result = await agent.run(value, request.signal);
+    return Response.json(result.body, { status: result.status, headers });
+  }
+  const guarded = await runWithUsage(() => admitRequestUsage(request, "event"), request.signal,
+    () => agent.run(value, request.signal));
+  // An in-flight cancellation can win before the agent returns its accounting.
+  // Unknown actual dispatch counts must not be presented as zero requests.
+  if (!guarded.ok) return Response.json({ ok: false, error: guarded.error, trace: [], usage: guarded.workStarted ? null : { geminiRequests: 0, qlooRequests: 0 } }, {
+    status: guarded.error.status, headers: { ...headers,
+      ...(guarded.error.retryAfterSeconds ? { "Retry-After": String(guarded.error.retryAfterSeconds) } : {}),
+    },
+  });
+  const result = guarded.value;
   return Response.json(result.body, { status: result.status, headers });
 }
