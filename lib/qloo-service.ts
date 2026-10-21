@@ -215,12 +215,20 @@ export function createQlooService({
 
   async function request(path: "/search" | "/v2/insights", params: Record<string, string | number | boolean>, externalSignal?: AbortSignal): Promise<JsonRecord> {
     if (!key) throw new ServiceError(503, "QLOO_NOT_CONFIGURED", "Qloo is not configured on this server. Sample filtering and event templates remain available.");
-    if (externalSignal?.aborted) throw new ServiceError(499, "QLOO_CANCELLED", "The ranking request was cancelled.");
+    const cancelled = () => new ServiceError(499, "QLOO_CANCELLED", "The Qloo request was cancelled.");
+    if (externalSignal?.aborted) throw cancelled();
     const url = new URL(path, origin);
     for (const [name, value] of Object.entries(params)) url.searchParams.set(name, String(value));
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     let timedOut = false;
+    let onCancel: (() => void) | undefined;
+    const cancellation = new Promise<never>((_resolve, reject) => {
+      if (externalSignal) {
+        onCancel = () => reject(cancelled());
+        externalSignal.addEventListener("abort", onCancel, { once: true });
+      }
+    });
     const deadline = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
         timedOut = true;
@@ -242,14 +250,15 @@ export function createQlooService({
         const body = record(await boundedJson(response));
         if (!body || body.success === false) schemaError();
         return body;
-      })(), deadline]);
+      })(), deadline, cancellation]);
     } catch (error) {
-      if (externalSignal?.aborted) throw new ServiceError(499, "QLOO_CANCELLED", "The ranking request was cancelled.");
+      if (externalSignal?.aborted) throw cancelled();
       if (error instanceof ServiceError) throw error;
       if (timedOut) throw new ServiceError(504, "QLOO_TIMEOUT", "Qloo did not respond within 10 seconds. No retry was attempted.");
       throw new ServiceError(502, "QLOO_UNAVAILABLE", "Qloo could not be reached. No retry or substitute result was used.");
     } finally {
       clearTimeout(timer);
+      if (onCancel) externalSignal?.removeEventListener("abort", onCancel);
     }
   }
 
@@ -258,13 +267,13 @@ export function createQlooService({
       try { return { status: 200, body: { ok: true, ...prepareRanking(value) } }; }
       catch (error) { return failure(error); }
     },
-    async search(value: unknown): Promise<QlooServiceResult<QlooSearchResponse>> {
+    async search(value: unknown, signal?: AbortSignal): Promise<QlooServiceResult<QlooSearchResponse>> {
       try {
         const input = boundedInput(value);
         if (!exactKeys(input, ["query", "kind"]) || !validText(input.query, 100) ||
           (input.kind !== "movie" && input.kind !== "artist")) invalid("Enter a film or musician name of 1 to 100 characters.");
         const kind: InterestKind = input.kind;
-        const body = await request("/search", { query: input.query.trim(), types: `urn:entity:${kind}`, take: 3 });
+        const body = await request("/search", { query: input.query.trim(), types: `urn:entity:${kind}`, take: 3 }, signal);
         if (!Array.isArray(body.results) || body.results.length > 3) schemaError();
         const used = new Set<string>();
         const candidates = body.results.map((item): QlooInterest => {

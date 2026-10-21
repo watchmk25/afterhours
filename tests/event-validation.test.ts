@@ -122,6 +122,56 @@ test("matching constraints, timed agenda segments, and negative bypass instructi
   ]) assert(parseEventInput({ ...input(), request }).ok, request);
 });
 
+test("individual activity timings do not conflict with the authoritative overall duration", () => {
+  for (const request of [
+    "Plan a 45-minute event with 10 minutes for discussion.",
+    "Plan a 45-minute event with a 10-minute discussion.",
+    "Allow 8 minutes for silent sketching, then 12 minutes for paired sharing.",
+    "Spend 15 minutes on a shared collage during the event.",
+    "The event includes 7 minutes of voluntary introductions and 8 minutes of reading.",
+    "Within the event, use 10 minutes for a discussion of the event theme.",
+    "Include a 10-minute discussion in the event and a 5-minute pause afterwards.",
+    "Include a 10-minute event introduction and a 5-minute pause afterwards.",
+    "Give paired sharing a duration of 10 minutes within the 45-minute event.",
+    "Plan 45 minutes for the whole event, including 10 minutes for discussion.",
+    "Use 10 minutes for the event introduction with optional paired sharing afterwards.",
+  ]) {
+    const result = parseEventInput({ ...input(), request });
+    assert(result.ok, request);
+    assert.equal(result.input.duration, 45);
+    assert.deepEqual(result.input.filters, input().filters);
+  }
+});
+
+test("explicit whole-event totals still require clarification even alongside activity timings", () => {
+  for (const request of [
+    "Plan a 60-minute interactive event with 10 minutes for discussion.",
+    "The event should last 60 minutes, including 10 minutes for discussion.",
+    "Make the event 2 hours with 15 minutes for paired sharing.",
+    "Plan the event for 60 minutes with 10 minutes for discussion.",
+    "Plan a total of 60 minutes, including 10 minutes for discussion.",
+    "Plan 60 minutes for the whole event, including 10 minutes for discussion.",
+    "Plan 60 minutes for the entire session with optional paired sharing.",
+    "Plan 60 minutes for the event with voluntary discussion.",
+    "Set the event duration to 60 minutes with optional sketching.",
+    "Include 10 minutes for discussion; use 60 minutes in total.",
+    "Keep the total duration at 60 minutes with optional conversation.",
+    "Make it 60 minutes, including 10 minutes for discussion.",
+    "Plan a 45-minute event followed by a 60-minute event.",
+  ]) {
+    const value = { ...input(), request };
+    const original = structuredClone(value);
+    const result = parseEventInput(value);
+    assert(!result.ok && result.code === "CLARIFICATION_REQUIRED", request);
+    assert.deepEqual(value, original);
+  }
+  for (const request of [
+    "The event should last 45 minutes with 10 minutes for discussion.",
+    "Use 45 minutes in total, including 10 minutes for silent sketching.",
+    "Set the event duration to 45 minutes with optional paired sharing.",
+  ]) assert(parseEventInput({ ...input(), request }).ok, request);
+});
+
 test("proposal validation joins factual book metadata, coverage and evidence from current server data", () => {
   const current = context();
   const result = validate(draft(), current);

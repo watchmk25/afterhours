@@ -43,6 +43,7 @@ async function prepareGuideDraft(page: Page) {
   await shelf(page).getByRole("button", { name: "Select: The Guide", exact: true }).click();
   await page.getByLabel("Event title", { exact: true }).fill("Preserve my Guide event");
   await page.getByLabel("Organizer notes", { exact: true }).fill("Keep this carefully edited room plan.");
+  await page.getByText("Optional audience notes", { exact: true }).click();
   await page.getByLabel("Books", { exact: true }).fill("A favourite that must remain");
 }
 
@@ -217,6 +218,7 @@ test("dynamic catalogue languages work and Reset retains imported inventory with
   await expect(shelf(page).getByRole("heading", { level: 3 })).toHaveText(["Evening Windows"]);
   await shelf(page).getByRole("button", { name: "Select: Evening Windows", exact: true }).click();
   await page.getByLabel("Organizer notes", { exact: true }).fill("Discard these imported-book notes on Reset.");
+  await page.getByText("Optional audience notes", { exact: true }).click();
   await page.getByLabel("Books", { exact: true }).fill("A temporary favourite");
   await page.getByLabel("Films", { exact: true }).fill("A temporary film");
   await page.getByLabel("Musicians", { exact: true }).fill("A temporary musician");
@@ -239,6 +241,7 @@ test("dynamic catalogue languages work and Reset retains imported inventory with
 
 test("Restore sample catalogue clears imported selection but retains favourites and numeric limits", async ({ page }) => {
   await importCsv(page);
+  await page.getByText("Optional audience notes", { exact: true }).click();
   await page.getByLabel("Books", { exact: true }).fill("Keep the audience taste");
   await page.getByLabel("Max price per copy", { exact: true }).fill("450");
   await page.getByLabel("Max page count", { exact: true }).fill("300");

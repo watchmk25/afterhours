@@ -54,6 +54,6 @@ export async function handleQlooRequest(request: Request, operation: "search" | 
   // Search and rank can run in separate server instances. Derive the private
   // signing key consistently without configuring or exposing another secret.
   const service = createRuntimeQlooService();
-  const result = await service[operation](input);
+  const result = await service[operation](input, request.signal);
   return Response.json(result.body, { status: result.status, headers });
 }

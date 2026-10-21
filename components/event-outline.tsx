@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { Book } from "@/lib/types";
+import type { Book, FilterInputs } from "@/lib/types";
 import type { EventProposal } from "@/lib/event-types";
 
 type OutlineDraft = {
@@ -26,7 +26,12 @@ function createTemplate(book: Book | null, proposal: EventProposal | null): Outl
   };
 }
 
-export function EventOutline({ book, proposal = null }: { book: Book | null; proposal?: EventProposal | null }) {
+export function EventOutline({ book, proposal = null, appliedFilters = null, previousInputs = false }: {
+  book: Book | null;
+  proposal?: EventProposal | null;
+  appliedFilters?: FilterInputs | null;
+  previousInputs?: boolean;
+}) {
   const fieldId = useId();
   const applied = proposal?.selectedBookId === book?.id ? proposal : null;
   const [draft, setDraft] = useState(() => createTemplate(book, applied));
@@ -61,6 +66,32 @@ export function EventOutline({ book, proposal = null }: { book: Book | null; pro
             Edits stay in this session. Switching books starts a fresh template.
             {applied ? " Applying another proposal replaces this draft." : ""}
           </p>
+
+          {applied && appliedFilters && <section className="applied-event-context" aria-label="Applied event context">
+            <h4>Applied event context</h4>
+            {previousInputs && <p className="qloo-notice" role="status">
+              <strong>Based on previous inputs.</strong> Your confirmed audience or filters changed after Apply. Your edits are kept.
+              {" "}<a href="#event-planner">Generate a current proposal</a> to review a replacement; nothing changes until you apply it.
+            </p>}
+            <p className="quiet applied-interests"><strong>Confirmed interests used:</strong>{" "}
+              {applied.interests.map((interest) => `${interest.name}${interest.disambiguation ? ` (${interest.disambiguation})` : ""} — ${interest.kind === "movie" ? "film" : "musician"}`).join("; ")}
+            </p>
+            <p className="qloo-coverage">Qloo assessed {applied.coverage.assessedCount} of {applied.coverage.eligibleCount} eligible books; {applied.coverage.supportedCount} had reviewed mappings.</p>
+            <details className="applied-evidence">
+              <summary>Applied filters and numerical evidence</summary>
+              <p><strong>Filter snapshot:</strong> Maximum ₹{appliedFilters.maxPrice} per copy · Maximum {appliedFilters.maxPages} pages · Languages: {appliedFilters.languages.join(", ")} · In stock only</p>
+              <p><strong>Planned duration:</strong> {applied.duration} minutes. Editing the running order does not revalidate its total.</p>
+              <ul aria-label="Applied Qloo evidence">
+                {applied.evidence.map((item) => <li key={item.id}>
+                  {item.kind === "affinity" ? "Qloo affinity" : `Input contribution: ${item.interestName ?? "confirmed interest"}`}: {item.value}
+                  {" "}<span className="quiet">(reference <code>{item.id}</code>)</span>
+                </li>)}
+              </ul>
+              <p className="quiet">These are the numerical values supplied with the applied proposal, not probabilities or guarantees of individual preferences. No ranking position is inferred.</p>
+              <h4>Warnings from the applied proposal</h4>
+              {applied.warnings.length > 0 ? <ul className="applied-warnings">{applied.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul> : <p className="quiet">No warnings were supplied.</p>}
+            </details>
+          </section>}
 
           <div className="outline-grid">
             <div className="field outline-full-width">

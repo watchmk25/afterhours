@@ -89,6 +89,7 @@ svg { flex-shrink: 0; }
 .small-tag { font-size: 10px; color: #7a7c6d; border: 1px solid #e4e3d7; border-radius: 4px; padding: 2px 7px; align-self: flex-end; margin-bottom: 3px; }
 .quiet { font-size: 12px; color: var(--muted); line-height: 1.65; }
 .audience-intro { margin: 14px 0 20px; }
+.audience-notes > summary { cursor: pointer; color: #3e5341; font-size: 13px; font-weight: 600; padding: 4px 0; outline-offset: 4px; }
 .audience-fields { display: grid; gap: 16px; }
 .field { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .field-label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #3e5341; line-height: 1.5; }
@@ -174,6 +175,16 @@ svg { flex-shrink: 0; }
 .outline-grid textarea { font-size: 12px; line-height: 1.8; }
 .outline-field-hint { font-size: 10px; color: #768369; }
 .outline-session-note { font-size: 11px; color: #768369; margin: 18px 0; }
+.applied-event-context { min-width: 0; margin: 18px 0 22px; padding: 14px; background: #f1f4ea; border: 1px solid #dbe1d2; border-radius: 6px; overflow-wrap: anywhere; }
+.applied-event-context h4 { margin: 0 0 8px; font-size: 13px; }
+.applied-event-context .qloo-notice { margin: 10px 0; }
+.applied-event-context a { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+.applied-interests { margin-bottom: 8px; }
+.applied-evidence { margin-top: 10px; font-size: 12px; }
+.applied-evidence > summary { cursor: pointer; font-weight: 600; outline-offset: 4px; }
+.applied-evidence p, .applied-evidence ul { margin: 10px 0; }
+.applied-evidence ul { padding-left: 18px; }
+.applied-evidence code { font-size: 11px; }
 .empty-results { background: #fffef9; border: 1px dashed #cbd3be; border-radius: 8px; min-height: 300px; padding: 35px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .empty-symbol { display: grid; place-items: center; width: 44px; height: 44px; background: #eef1e5; border-radius: 50%; color: #769367; margin-bottom: 18px; }
 .empty-results h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 26px; line-height: 1.3; }
@@ -223,7 +234,7 @@ svg { flex-shrink: 0; }
 .qloo-panel .button:disabled { opacity: .55; }
 .qloo-search-fields { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; }
 .qloo-search-help { margin: 9px 0 12px; }
-.qloo-confirmed { border-left: 1px solid var(--line); padding-left: 28px; }
+.qloo-confirmed { border-right: 1px solid var(--line); padding-right: 28px; }
 .qloo-interest-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
 .qloo-interest-list > li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; background: #f1f4ea; border: 1px solid #dbe1d2; border-radius: 6px; }
 .qloo-interest-list > li > div { min-width: 0; }
@@ -285,7 +296,7 @@ svg { flex-shrink: 0; }
   .event-agent-panel { padding: 20px; }
   .event-agent-inputs, .event-proposal-agenda { grid-template-columns: minmax(0, 1fr); }
   .qloo-input-grid, .qloo-ranked-list { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .qloo-confirmed { border-left: 0; padding-left: 0; padding-top: 20px; border-top: 1px solid var(--line); }
+  .qloo-confirmed { border-right: 0; padding-right: 0; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
 }
 @media (max-width: 480px) {
   .qloo-search-fields { grid-template-columns: minmax(0, 1fr); }

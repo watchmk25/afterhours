@@ -74,13 +74,55 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByLabel("Max page count", { exact: true })).toBeVisible();
 });
 
-test("Load example shows exactly the three English eligible books", async ({ page }) => {
+test("Load example confirms verified audience A and shows the three English books without provider calls", async ({ page }) => {
+  const providerRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/^\/api\/(?:qloo|event-agent)/u.test(new URL(request.url()).pathname)) providerRequests.push(request.url());
+  });
+  await expect(page.getByLabel("Books", { exact: true })).not.toBeVisible();
   await loadExample(page);
+  const confirmed = page.getByRole("list", { name: "Confirmed interests", exact: true });
+  await expect(confirmed.getByRole("listitem")).toHaveCount(2);
+  await expect(confirmed).toContainText("Amélie (2001)");
+  await expect(confirmed).toContainText("Norah Jones");
+  await expect(page.getByRole("button", { name: "Rank with Qloo", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
   await expect(page.getByRole("checkbox", { name: "English", exact: true })).toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Hindi", exact: true })).not.toBeChecked();
   await expect(page.getByRole("checkbox", { name: "Bengali", exact: true })).not.toBeChecked();
   await expect(eligibleBooks(page).getByRole("listitem")).toHaveCount(3);
   await expect(eligibleBooks(page).getByRole("heading", { level: 3 })).toHaveText(exampleTitles);
+  expect(providerRequests, "Loading the verified example must never search, rank, or generate").toEqual([]);
+});
+
+test("optional audience notes expand by keyboard and retain edits without changing confirmed interests", async ({ page }) => {
+  const providerRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/^\/api\/(?:qloo|event-agent)/u.test(new URL(request.url()).pathname)) providerRequests.push(request.url());
+  });
+  await loadExample(page);
+  const notesToggle = page.getByText("Optional audience notes", { exact: true });
+  const books = page.getByLabel("Books", { exact: true });
+  await expect(books).not.toBeVisible();
+  await tabTo(page, notesToggle);
+  await expectVisibleKeyboardFocus(notesToggle);
+  await page.keyboard.press("Space");
+  await expect(books).toBeVisible();
+  await tabTo(page, books);
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.type("Personal notes, not a matching signal");
+  await expect(books).toHaveValue("Personal notes, not a matching signal");
+  await expect(page.getByText(/These unconfirmed notes do not influence matching or event planning/)).toBeVisible();
+  await tabTo(page, notesToggle);
+  await page.keyboard.press("Enter");
+  await expect(books).not.toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(books).toHaveValue("Personal notes, not a matching signal");
+  const confirmed = page.getByRole("list", { name: "Confirmed interests", exact: true });
+  await expect(confirmed.getByRole("listitem")).toHaveCount(2);
+  await expect(confirmed).toContainText("Amélie (2001)");
+  await expect(confirmed).toContainText("Norah Jones");
+  expect(providerRequests).toEqual([]);
 });
 
 test("The Guide selection and outline edits survive a valid price change without switching books", async ({ page }) => {

@@ -138,7 +138,8 @@ test("Generate previews a different book without changing the selected book or e
   const calls = await mockAgent(page, async (route) => { await route.fulfill({ json: proposalResponse(proposed) }); });
   await openExample(page);
   await makeGuideDraft(page);
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
+  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
+  await expect(page.getByRole("list", { name: "Confirmed interests", exact: true }).getByRole("listitem")).toHaveCount(2);
   expect(calls.requests).toHaveLength(0);
   await confirmPreset(page);
   expect(calls.requests, "Confirming interests must not generate automatically").toHaveLength(0);
@@ -195,6 +196,109 @@ test("Apply replaces an edited draft even when the proposal keeps the same selec
   await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(proposal().eventTitle);
   await expect(page.getByLabel("Materials", { exact: true })).toHaveValue("Blank cards\nPens");
   expect(calls.requests, "Applying locally must not generate another proposal").toHaveLength(1);
+});
+
+for (const change of ["filters", "audience"] as const) {
+  test(`applied evidence and all edits survive ${change} changes and returning to the previous inputs`, async ({ page }, testInfo) => {
+    const proposed = proposal();
+    const contribution = {
+      id: `contribution:the-guide:${presetA.interests[0].entityId}`, bookId: "the-guide",
+      kind: "contribution" as const, value: 0.6123456789,
+      interestId: presetA.interests[0].entityId, interestName: presetA.interests[0].name,
+    };
+    proposed.evidence.push(contribution);
+    proposed.evidenceRefs.push(contribution.id);
+    const calls = await mockAgent(page, async (route) => { await route.fulfill({ json: proposalResponse(proposed) }); });
+    await openExample(page);
+    await generate(page);
+    await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
+    const context = outline(page).getByRole("region", { name: "Applied event context", exact: true });
+    await expect(context).toBeVisible();
+    await expect(context).toContainText("Amélie (2001)");
+    await expect(context).toContainText("Norah Jones");
+    await expect(context).toContainText("Qloo assessed 2 of 3 eligible books; 2 had reviewed mappings.");
+    await expect(context.getByRole("status")).toHaveCount(0);
+    await context.getByText("Applied filters and numerical evidence", { exact: true }).click();
+    await expect(context).toContainText("Maximum ₹450 per copy");
+    await expect(context).toContainText("Maximum 300 pages");
+    await expect(context).toContainText("Languages: English");
+    await expect(context).toContainText("Qloo affinity: 0.7");
+    await expect(context).toContainText("Input contribution: Amélie: 0.6123456789");
+    await expect(context).toContainText(contribution.id);
+    await expect(context).toContainText(proposed.warnings[0]);
+    const edits = {
+      "Event title": "Keep this applied event title",
+      "Running order": "My own edited running order",
+      "Discussion prompts": "An organizer's optional question",
+      "Materials": "Large-print cards and pencils",
+      "Invitation": "My reviewed invitation wording",
+      "Organizer notes": "Keep accessible seating and quiet space",
+    };
+    for (const [label, value] of Object.entries(edits)) await page.getByLabel(label, { exact: true }).fill(value);
+    await page.getByText("Optional audience notes", { exact: true }).click();
+    await page.getByLabel("Books", { exact: true }).fill("Notes do not affect this applied context");
+    await expect(context.getByRole("status")).toHaveCount(0);
+    if (change === "filters") {
+      await page.getByLabel("Max price per copy", { exact: true }).fill("400");
+    } else {
+      await page.getByRole("button", { name: presetB.label, exact: true }).click();
+      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toContainText("Interstellar (2014)");
+      await expect(context).not.toContainText("Interstellar");
+    }
+    await expect(context.getByRole("status")).toContainText("Based on previous inputs.");
+    for (const [label, value] of Object.entries(edits)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
+    await expect(context).toContainText("Maximum ₹450 per copy");
+    await expect(context).toContainText("Qloo assessed 2 of 3 eligible books");
+    if (change === "filters") await page.getByLabel("Max price per copy", { exact: true }).fill("450");
+    else await page.getByRole("button", { name: presetA.label, exact: true }).click();
+    await expect(context.getByRole("status")).toContainText("Based on previous inputs.");
+    for (const [label, value] of Object.entries(edits)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
+    const currentProposal = context.getByRole("link", { name: "Generate a current proposal", exact: true });
+    await tabTo(page, currentProposal);
+    await expectKeyboardFocus(currentProposal);
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/#event-planner$/);
+    await expect(planner(page).getByRole("heading", { name: "Gemini event planner", exact: true })).toBeInViewport();
+    expect(calls.requests, "Input edits and the navigation link must never regenerate").toHaveLength(1);
+    await page.setViewportSize({ width: 390, height: 844 });
+    const screenshotPath = testInfo.outputPath(`applied-event-context-${change}-390.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await testInfo.attach("Applied evidence, previous-input notice and preserved edited outline at 390px", { path: screenshotPath, contentType: "image/png" });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= 390 && document.body.scrollWidth <= 390)).toBe(true);
+    const clipping = await context.locator("p, li, code, summary, a").evaluateAll((elements) => elements.flatMap((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width && rect.height && (rect.left < -1 || rect.right > 391 || element.scrollWidth > element.clientWidth + 1) ? [element.textContent?.trim()] : [];
+    }));
+    expect(clipping, "Applied interests, numerical values, UUID references, warnings and links must fit at 390px").toEqual([]);
+  });
+}
+
+test("applied context survives cancelled import and clears on replacement or book invalidation", async ({ page }) => {
+  const calls = await mockAgent(page);
+  await openExample(page);
+  await generate(page);
+  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
+  const context = outline(page).getByRole("region", { name: "Applied event context", exact: true });
+  await page.getByLabel("Event title", { exact: true }).fill("Keep my applied draft");
+  const csv = { name: "context-import.csv", mimeType: "text/csv", buffer: Buffer.from("title,author,price_inr,pages,language,stock\nLocal Book,Test Author,100,50,English,2\n") };
+  await page.getByLabel("Choose catalogue CSV", { exact: true }).setInputFiles(csv);
+  await page.getByRole("button", { name: "Cancel import", exact: true }).click();
+  await expect(context).toBeVisible();
+  await expect(context.getByRole("status")).toHaveCount(0);
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("Keep my applied draft");
+  await page.getByLabel("Choose catalogue CSV", { exact: true }).setInputFiles(csv);
+  await page.getByRole("button", { name: "Replace catalogue", exact: true }).click();
+  await expect(context).toHaveCount(0);
+  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("list", { name: "Confirmed interests", exact: true }).getByRole("listitem")).toHaveCount(2);
+  await page.getByRole("button", { name: "Restore sample catalogue", exact: true }).click();
+  await generate(page);
+  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
+  await expect(context).toBeVisible();
+  await page.getByLabel("Max price per copy", { exact: true }).fill("100");
+  await expect(context).toHaveCount(0);
+  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
+  expect(calls.requests).toHaveLength(2);
 });
 
 test("Revise uses current filters and a historical proposal while preserving the current draft until Apply", async ({ page }) => {
@@ -365,7 +469,7 @@ for (const context of ["filters", "interests", "request", "duration"] as const) 
 }
 
 for (const action of ["Reset", "Load example"]) {
-  test(`${action} clears proposal state, confirmed interests, selection, and the old outline`, async ({ page }) => {
+  test(`${action} clears proposal state and outline and restores its intended audience state`, async ({ page }) => {
     const calls = await mockAgent(page);
     await openExample(page);
     await makeGuideDraft(page);
@@ -377,8 +481,15 @@ for (const action of ["Reset", "Load example"]) {
     await expect(preview(page)).toHaveCount(0);
     await expect(planner(page).getByLabel("Event request", { exact: true })).toHaveValue(initialRequest);
     await expect(planner(page).getByLabel("Event duration (minutes)", { exact: true })).toHaveValue("45");
-    await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
-    await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toHaveCount(0);
+    if (action === "Reset") {
+      await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
+      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toHaveCount(0);
+    } else {
+      await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
+      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true }).getByRole("listitem")).toHaveCount(2);
+      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toContainText("Amélie (2001)");
+      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toContainText("Norah Jones");
+    }
     await expect(outline(page).getByRole("textbox")).toHaveCount(0);
     await expect(shelf(page).getByRole("button", { pressed: true })).toHaveCount(0);
     expect(calls.requests).toHaveLength(1);

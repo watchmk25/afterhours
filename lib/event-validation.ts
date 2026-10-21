@@ -94,6 +94,22 @@ function filterShape(value: unknown): value is FilterInputs {
     filters.languages.every((language) => text(language, 80));
 }
 
+function isOverallDuration(before: string, after: string): boolean {
+  // Recognize duration attached to the whole event, rather than guessing from
+  // activity names. For example, "10 minutes for discussion" is an allocation;
+  // "a 60-minute interactive event" and "the event lasts 60 minutes" are totals.
+  const eventNoun = "(?:event|session|gathering|workshop)";
+  const eventEnd = "\\b(?=\\s*(?:$|[.,;:!?]|(?:with|for|including|followed|and|or|that|where|which|to|should|must|will|can|is|at)\\b))";
+  const eventPhrase = after.match(new RegExp(`^\\s+((?:[\\p{L}][\\p{L}'-]*\\s+){0,4})${eventNoun}${eventEnd}`, "u"));
+  if (eventPhrase && !/\b(?:for|of|in|during|within|with|and|or|then|before|after|followed|include|includes|including)\b/u.test(eventPhrase[1])) return true;
+  if (new RegExp(`\\b${eventNoun}\\s*(?:(?:(?:should|must|will|would|can|could)\\s+)?(?:be|is|lasts?|lasting|runs?|running|duration(?:\\s+(?:is|of))?)\\s*(?:for\\s+)?|(?:for|of|:|=)\\s*)?$`, "u").test(before)) return true;
+  if (/(?:^|[.;!?]\s*|\b(?:set|keep|make|use)\s+(?:the\s+)?)(?:(?:overall|total|event)\s+)?(?:duration|running time)\s*(?:(?:of|is|at|:|=|to)\s*)?$/u.test(before)) return true;
+  if (/\b(?:overall|total)\s+(?:duration\s+)?(?:of|is|at|:|=|to)\s*$/u.test(before)) return true;
+  if (new RegExp(`^\\s+for\\s+(?:the\\s+)?(?:(?:whole|entire|overall)\\s+)?${eventNoun}${eventEnd}`, "u").test(after)) return true;
+  if (/^\s*(?:(?:in\s+)?(?:total|overall)|altogether|in all)\b/u.test(after)) return true;
+  return /\b(?:make|keep)\s+(?:it|this)\s*(?:(?:at|to|for)\s*)?$/u.test(before);
+}
+
 /** Only explicit conflicts are detected; structured filters are never changed. */
 function constraintClarification(request: string, filters: FilterInputs, duration: number): string | null {
   const normalized = request.toLowerCase();
@@ -113,9 +129,9 @@ function constraintClarification(request: string, filters: FilterInputs, duratio
   }
   const times = [...normalized.matchAll(/\b(\d+(?:\.\d+)?)\s*-?\s*(minutes?|mins?|hours?|hrs?)\b/gu)];
   for (const match of times) {
-    const following = normalized.slice((match.index ?? 0) + match[0].length, (match.index ?? 0) + match[0].length + 45);
-    // A timed agenda segment is not a competing overall event duration.
-    if (/^\s*(?:icebreaker|break|round|introduction|welcome|activity|closing|reflection|exercise|segment)\b/u.test(following)) continue;
+    const before = normalized.slice(0, match.index);
+    const after = normalized.slice((match.index ?? 0) + match[0].length);
+    if (!isOverallDuration(before, after)) continue;
     const minutes = Number(match[1]) * (/^(?:hours?|hrs?)$/u.test(match[2]) ? 60 : 1);
     if (minutes !== duration) return "The event duration in your request differs from the duration control. Set the intended duration and try again.";
   }

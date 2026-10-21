@@ -95,6 +95,12 @@ async function confirmPreset(page: Page) {
   await expect(confirmed(page)).toContainText("Norah Jones");
 }
 
+async function removeExampleInterests(page: Page) {
+  await matching(page).getByRole("button", { name: "Remove Amélie (2001)", exact: true }).click();
+  await matching(page).getByRole("button", { name: "Remove Norah Jones", exact: true }).click();
+  await expect(confirmed(page)).toHaveCount(0);
+}
+
 async function guideDraft(page: Page) {
   await shelf(page).getByRole("button", { name: "Select: The Guide", exact: true }).click();
   await page.getByLabel("Event title", { exact: true }).fill("Keep my Guide event");
@@ -113,16 +119,17 @@ function deferred() {
   return { promise, resolve };
 }
 
-test("confirmed preset triggers one explicit ranking with partial coverage and preserves the current outline", async ({ page }) => {
+test("Load example confirms the verified audience without requests and enables one explicit ranking while preserving the outline", async ({ page }) => {
   const calls = await mockQloo(page);
   await openExample(page);
   await guideDraft(page);
-  await expect(matching(page).getByRole("button", { name: "Rank with Qloo", exact: true })).toBeDisabled();
+  await expect(confirmed(page).getByRole("listitem")).toHaveCount(2);
+  await expect(confirmed(page)).toContainText("Amélie (2001)");
+  await expect(confirmed(page)).toContainText("Norah Jones");
+  await expect(matching(page).getByRole("button", { name: "Rank with Qloo", exact: true })).toBeEnabled();
   expect(calls.search).toHaveLength(0);
   expect(calls.rank).toHaveLength(0);
 
-  await confirmPreset(page);
-  expect(calls.rank, "Confirming interests must not automatically rank").toHaveLength(0);
   await matching(page).getByRole("button", { name: "Rank with Qloo", exact: true }).click();
 
   await expect(ranking(page)).toBeVisible();
@@ -150,6 +157,7 @@ test("confirmed preset triggers one explicit ranking with partial coverage and p
 test("searching never confirms a candidate until the organizer selects and confirms it", async ({ page }) => {
   const calls = await mockQloo(page, { rank: async (route) => { await route.fulfill({ json: rankingResponse([searchCandidate]) }); } });
   await openExample(page);
+  await removeExampleInterests(page);
   await expect(matching(page).getByLabel("Find a film or musician", { exact: true })).toHaveAttribute("maxlength", "100");
   await matching(page).getByLabel("Find a film or musician", { exact: true }).fill("Amélie");
   expect(calls.search, "Typing must not search automatically").toHaveLength(0);
@@ -291,6 +299,7 @@ test("late search candidates cannot reappear after the query or interest type ch
     },
   });
   await openExample(page);
+  await removeExampleInterests(page);
   const query = matching(page).getByLabel("Find a film or musician", { exact: true });
   await query.fill("Old query");
   await matching(page).getByRole("button", { name: "Search Qloo", exact: true }).click();
@@ -406,6 +415,7 @@ test("390px ranked workspace keeps matching, eligible books, and the editable ou
 test("keyboard Tab, Space, Enter, and typing operate filters, search confirmation, ranked selection, and outline", async ({ page }) => {
   const calls = await mockQloo(page, { rank: async (route) => { await route.fulfill({ json: rankingResponse([searchCandidate]) }); } });
   await openExample(page);
+  await removeExampleInterests(page);
   const english = page.getByRole("checkbox", { name: "English", exact: true });
   await tabTo(page, english);
   await expectKeyboardFocus(english);

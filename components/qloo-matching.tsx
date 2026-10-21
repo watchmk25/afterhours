@@ -141,7 +141,7 @@ export function QlooMatching({
   return (
     <section className="panel qloo-panel" aria-labelledby="qloo-title">
       <div className="section-heading qloo-heading">
-        <div><p className="eyebrow">OPTIONAL / CULTURAL INTERESTS</p><h2 id="qloo-title">Live Qloo matching</h2></div>
+        <div><p className="eyebrow">01 / CONFIRM YOUR AUDIENCE</p><h2 id="qloo-title">Live Qloo matching</h2></div>
         <span className="small-tag">On request</span>
       </div>
       <p className="quiet qloo-intro">
@@ -151,6 +151,17 @@ export function QlooMatching({
       </p>
       {!sample && <p className="qloo-notice" role="status">Qloo matching supports the sample catalogue only. Imported inventory stays available with local filters and event templates. Restore the sample catalogue to use live matching.</p>}
       <div className="qloo-input-grid">
+        <div className="qloo-confirmed">
+          <h3 className="qloo-subtitle">Confirmed interests <span className="count-badge">{interests.length}/5</span></h3>
+          <p className="quiet">Only this list is sent as audience signals for ranking and event planning. Removing or changing an interest clears the current ranking.</p>
+          {interests.length ? <ul className="qloo-interest-list" aria-label="Confirmed interests">
+            {interests.map((interest) => <li key={interest.entityId}>
+              <div><strong>{interestLabel(interest)}</strong><p className="quiet">{interest.kind === "movie" ? "Film" : "Musician"}</p></div>
+              <button className="button button-secondary" aria-label={`Remove ${interestLabel(interest)}`} onClick={() => onInterestsChange(interests.filter((item) => item.entityId !== interest.entityId))}>Remove</button>
+            </li>)}
+          </ul> : <p className="quiet qloo-notice">No confirmed interests yet. Load example, choose an example pair, or search and confirm a candidate.</p>}
+          {interests.length >= 5 && <p className="quiet">Five interests confirmed. Remove one before adding another.</p>}
+        </div>
         <div>
           <h3 className="qloo-subtitle">Confirm audience interests</h3>
           <p className="quiet">Each example button confirms its displayed pair, replacing the current confirmed interests.</p>
@@ -185,17 +196,6 @@ export function QlooMatching({
               {duplicateCandidate && <p className="quiet">This interest is already confirmed.</p>}
             </fieldset> : <p className="quiet qloo-notice" role="status">No candidates found. Try a more specific name.</p>
           )}
-        </div>
-        <div className="qloo-confirmed">
-          <h3 className="qloo-subtitle">Confirmed interests <span className="count-badge">{interests.length}/5</span></h3>
-          <p className="quiet">Only this list is sent as audience signals. Removing or changing an interest clears the current ranking.</p>
-          {interests.length ? <ul className="qloo-interest-list" aria-label="Confirmed interests">
-            {interests.map((interest) => <li key={interest.entityId}>
-              <div><strong>{interestLabel(interest)}</strong><p className="quiet">{interest.kind === "movie" ? "Film" : "Musician"}</p></div>
-              <button className="button button-secondary" aria-label={`Remove ${interestLabel(interest)}`} onClick={() => onInterestsChange(interests.filter((item) => item.entityId !== interest.entityId))}>Remove</button>
-            </li>)}
-          </ul> : <p className="quiet qloo-notice">No confirmed interests yet. Choose an example pair or search and confirm a candidate.</p>}
-          {interests.length >= 5 && <p className="quiet">Five interests confirmed. Remove one before adding another.</p>}
         </div>
       </div>
       <div className="qloo-rank-action">

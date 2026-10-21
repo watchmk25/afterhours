@@ -1,5 +1,9 @@
 # Protected release preview
 
+For the subsequent audience-setup, applied-context, cancellation, and duration
+corrections with zero live calls, see the [audience-to-event verification record](audience-event-journey.md).
+The deployment and live timings below describe the earlier release checkpoint.
+
 This release stays on `feat/event-agent`; [draft PR #3](https://github.com/watchmk25/afterhours/pull/3)
 targets main and must not be merged in this task. The private repository's
 cumulative diff was reviewed from `origin/main` at
@@ -195,8 +199,10 @@ or equivalent gate; enforce durable per-user/IP and global request/spending
 quotas plus shared concurrency limits; configure provider budgets and useful
 monitoring/alerts; validate abuse controls across instances; and review data
 handling and retention. In-memory counters are insufficient. Standalone Qloo
-route body-read deadlines and caller-cancellation wiring also remain public
-hardening work. No database/provider framework is introduced in this release.
+route body-read deadlines remain public hardening work. Search/rank now forward
+caller cancellation to fetch/body reading; a dispatched request cannot be
+retracted and cancellation does not establish a quota refund. No
+database/provider framework is introduced in this release.
 
 Five sample books have reviewed mappings; current filters may assess only part
 of the eligible inventory (local A: 3/6, B: 1/3). Imported rows remain local and

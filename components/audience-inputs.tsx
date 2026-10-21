@@ -20,16 +20,12 @@ export function AudienceInputs({
   onChange: (value: AudienceFavourites) => void;
 }) {
   return (
-    <section aria-labelledby="audience-title">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">01 / SET THE SCENE</p>
-          <h2 id="audience-title">Your audience</h2>
-        </div>
-        <span className="small-tag">Optional</span>
-      </div>
+    <details className="audience-notes">
+      <summary>Optional audience notes</summary>
       <p className="quiet audience-intro" id="audience-help">
-        Audience notes: add one favourite per line. These are unconfirmed notes.
+        Add one favourite per line for your own reference. These unconfirmed
+        notes do not influence matching or event planning. Use the confirmed
+        interests above as your audience input.
       </p>
       <div className="audience-fields">
         {groups.map(({ key, label, icon, placeholder }) => (
@@ -58,6 +54,6 @@ export function AudienceInputs({
         Confirm films or musicians in Live Qloo matching to use them for ranking.
         These notes do not change eligibility.
       </p>
-    </section>
+    </details>
   );
 }

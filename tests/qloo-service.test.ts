@@ -233,6 +233,81 @@ test("Qloo transport errors do not expose raw exceptions or trigger fallback", a
   assert.equal(fake.calls.length, 1);
 });
 
+for (const operation of ["search", "rank"] as const) {
+  const input = () => operation === "search" ? { query: "Synthetic", kind: "movie" } : rankRequest();
+  const response = () => operation === "search" ? candidateBody() : rankedBody();
+
+  test(`Qloo ${operation} cancelled before dispatch makes zero upstream requests`, async () => {
+    const controller = new AbortController();
+    controller.abort(new Error(`RAW ${fixtureKey}`));
+    const fake = stub(() => { throw new Error("must not run"); });
+    const service = createQlooService({ credential: fixtureKey, fetcher: fake.fetcher });
+    const result = await service[operation](input(), controller.signal);
+    assert.equal(result.status, 499);
+    assert(!result.body.ok);
+    assert.equal(result.body.error.code, "QLOO_CANCELLED");
+    assert(!JSON.stringify(result.body).includes(fixtureKey));
+    assert.equal(fake.calls.length, 0);
+  });
+
+  test(`Qloo ${operation} forwards in-flight cancellation and rejects a late response without retry`, { timeout: 1000 }, async () => {
+    const controller = new AbortController();
+    let started!: () => void;
+    const dispatched = new Promise<void>((resolve) => { started = resolve; });
+    let finish!: (value: Response) => void;
+    let aborts = 0;
+    const fake = stub((_url, options) => new Promise<Response>((resolve) => {
+      finish = resolve;
+      options.signal?.addEventListener("abort", () => { aborts += 1; }, { once: true });
+      started();
+    }));
+    const service = createQlooService({ credential: fixtureKey, fetcher: fake.fetcher });
+    const pending = service[operation](input(), controller.signal);
+    await dispatched;
+    controller.abort(new Error(`RAW ${fixtureKey}`));
+    const result = await pending;
+    assert.equal(result.status, 499);
+    assert(!result.body.ok);
+    assert.equal(result.body.error.code, "QLOO_CANCELLED");
+    assert(!JSON.stringify(result.body).includes(fixtureKey));
+    assert.equal(fake.calls.length, 1);
+    assert.equal(fake.calls[0].options.signal?.aborted, true);
+    assert.equal(aborts, 1);
+    // A transport that resolves after cancellation must never produce a success.
+    finish(Response.json(response()));
+    await Promise.resolve();
+    assert.equal(result.body.ok, false);
+    assert.equal(fake.calls.length, 1);
+  });
+
+  test(`Qloo ${operation} cancellation also interrupts response-body reading`, { timeout: 1000 }, async () => {
+    const controller = new AbortController();
+    let reading!: () => void;
+    const bodyRead = new Promise<void>((resolve) => { reading = resolve; });
+    let aborts = 0;
+    const fake = stub((_url, options) => new Response(new ReadableStream({
+      start(stream) {
+        options.signal?.addEventListener("abort", () => {
+          aborts += 1;
+          stream.error(new Error(`RAW ${fixtureKey}`));
+        }, { once: true });
+      },
+      pull() { reading(); },
+    })));
+    const service = createQlooService({ credential: fixtureKey, fetcher: fake.fetcher });
+    const pending = service[operation](input(), controller.signal);
+    await bodyRead;
+    controller.abort();
+    const result = await pending;
+    assert.equal(result.status, 499);
+    assert(!result.body.ok);
+    assert.equal(result.body.error.code, "QLOO_CANCELLED");
+    assert(!JSON.stringify(result.body).includes(fixtureKey));
+    assert.equal(fake.calls.length, 1);
+    assert.equal(aborts, 1);
+  });
+}
+
 test("Qloo's deadline covers reading the response body and aborts once", async () => {
   const fake = stub((_url, options) => new Response(new ReadableStream({
     start(controller) { options.signal?.addEventListener("abort", () => controller.error(new Error("RAW aborted"))); },
