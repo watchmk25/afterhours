@@ -1,0 +1,379 @@
+{
+  "schemaVersion": 1,
+  "conductedOn": "2026-10-21",
+  "sourceCommit": "5e5af7c578edb6089dd006f85acdfaa1ef3f95e0",
+  "origin": "https://hackathon.api.qloo.com",
+  "originalEvidence": "docs/qloo-feasibility-results.json",
+  "budget": {
+    "taskMaximum": {
+      "qloo": 10,
+      "gemini": 4
+    },
+    "plannedMaximum": {
+      "qloo": 3,
+      "gemini": 4
+    },
+    "actual": {
+      "qloo": 1,
+      "gemini": 0
+    }
+  },
+  "requests": [
+    {
+      "kind": "entity-details",
+      "method": "GET",
+      "path": "/entities",
+      "params": {
+        "entity_ids": "691E457E-04BB-4B22-806F-6745F701094C,2042C96C-7E0A-4B0E-913E-95A726A59AB9,6DF42DB2-CFE7-4CB5-B3E7-8E102D599F67,51467D19-5DB2-4003-9734-61E68673668E,C8412519-DA61-49D8-8B7F-AA565EFC0110,21FEC03E-6D68-4C53-9698-4AB0916B0B2F,A1B3351B-1CA1-43CB-86DD-FB1D2D07EC27"
+      },
+      "dispatched": true,
+      "httpStatus": 200,
+      "processExitCode": 0,
+      "timedOut": false,
+      "harnessElapsedMs": 5995
+    }
+  ],
+  "observedEnvelope": {
+    "topLevelFields": [
+      "results"
+    ],
+    "resultsType": "array",
+    "entityCount": 7
+  },
+  "candidates": [
+    {
+      "localId": "godaan",
+      "name": "Godaan",
+      "entity_id": "691E457E-04BB-4B22-806F-6745F701094C",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1936, Munshi Premchand",
+      "properties": {
+        "format": "Kindle Edition",
+        "isbn10": "8172242190",
+        "isbn13": "9788172242190",
+        "page_count": 432,
+        "publication_date": "1936-01-01",
+        "publication_year": 1936,
+        "external": {
+          "goodreads": {
+            "id": "49896770"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn10",
+        "isbn13",
+        "page_count",
+        "publication_date",
+        "publication_year"
+      ]
+    },
+    {
+      "localId": "godaan",
+      "name": "गोदान [Godaan] โคทาน",
+      "entity_id": "2042C96C-7E0A-4B0E-913E-95A726A59AB9",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1936, Munshi Premchand",
+      "properties": {
+        "format": "Unknown Binding",
+        "isbn10": "8172242190",
+        "isbn13": "9788172242190",
+        "publication_date": "1936-01-01",
+        "publication_year": 1936,
+        "external": {
+          "goodreads": {
+            "id": "55707498"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn10",
+        "isbn13",
+        "publication_date",
+        "publication_year"
+      ]
+    },
+    {
+      "localId": "the-blue-umbrella",
+      "name": "The Blue Umbrella",
+      "entity_id": "6DF42DB2-CFE7-4CB5-B3E7-8E102D599F67",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1980, Ruskin Bond",
+      "properties": {
+        "format": "Paperback",
+        "isbn10": "8171673406",
+        "isbn13": "9788171673407",
+        "page_count": 83,
+        "publication_date": "1980-01-01",
+        "publication_year": 1980,
+        "external": {
+          "goodreads": {
+            "id": "1611810"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "popularity",
+        "tags",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn10",
+        "isbn13",
+        "page_count",
+        "publication_date",
+        "publication_year",
+        "short_description",
+        "short_descriptions"
+      ]
+    },
+    {
+      "localId": "the-blue-umbrella",
+      "name": "The Blue Umbrella",
+      "entity_id": "51467D19-5DB2-4003-9734-61E68673668E",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1980, Ruskin Bond",
+      "properties": {
+        "format": "Paperback",
+        "isbn10": "8131948579",
+        "isbn13": "9788131948576",
+        "page_count": 64,
+        "publication_date": "1980-01-01",
+        "publication_year": 1980,
+        "external": {
+          "goodreads": {
+            "id": "40848630"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn10",
+        "isbn13",
+        "page_count",
+        "publication_date",
+        "publication_year"
+      ]
+    },
+    {
+      "localId": "pather-panchali",
+      "name": "Pather Panchali: Song of the Road",
+      "entity_id": "C8412519-DA61-49D8-8B7F-AA565EFC0110",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1929, Bibhutibhushan Bandyopadhyay",
+      "properties": {
+        "format": "Paperback",
+        "isbn13": "9780253201867",
+        "page_count": 316,
+        "publication_date": "1929-09-11",
+        "publication_year": 1929,
+        "external": {
+          "goodreads": {
+            "id": "617097"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "popularity",
+        "tags",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn13",
+        "page_count",
+        "publication_date",
+        "publication_year",
+        "short_description",
+        "short_descriptions"
+      ]
+    },
+    {
+      "localId": "pather-panchali",
+      "name": "Pather Panchali",
+      "entity_id": "21FEC03E-6D68-4C53-9698-4AB0916B0B2F",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1929, Bibhutibhushan Bandyopadhyay",
+      "properties": {
+        "format": "Hardcover",
+        "isbn10": "8184371217",
+        "isbn13": "9788184371215",
+        "publication_date": "1929-09-11",
+        "publication_year": 1929,
+        "external": {
+          "goodreads": {
+            "id": "43897729"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn10",
+        "isbn13",
+        "publication_date",
+        "publication_year"
+      ]
+    },
+    {
+      "localId": "pather-panchali",
+      "name": "Pather Panchali (পথের পাঁচালী) (অপুর পাঁচালী #1)",
+      "entity_id": "A1B3351B-1CA1-43CB-86DD-FB1D2D07EC27",
+      "types": [
+        "urn:entity:book"
+      ],
+      "disambiguation": "1929, Bibhutibhushan Bandyopadhyay",
+      "properties": {
+        "format": "ebook",
+        "isbn10": "0253201861",
+        "page_count": 280,
+        "publication_date": "1929-09-11",
+        "publication_year": 1929,
+        "external": {
+          "goodreads": {
+            "id": "53003404"
+          }
+        }
+      },
+      "observedFields": [
+        "name",
+        "entity_id",
+        "types",
+        "properties",
+        "disambiguation"
+      ],
+      "observedPropertyFields": [
+        "description",
+        "external",
+        "format",
+        "image",
+        "isbn10",
+        "page_count",
+        "publication_date",
+        "publication_year"
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "localId": "godaan",
+      "status": "unresolved",
+      "entityId": null,
+      "evidence": "Two returned Qloo IDs share ISBN10/ISBN13 and the same title/author/year evidence, but differ in format and Goodreads ID. No canonical-ID relationship identifies a preferred ID."
+    },
+    {
+      "localId": "the-blue-umbrella",
+      "status": "unresolved",
+      "entityId": null,
+      "evidence": "Two Ruskin Bond paperback records have distinct ISBNs and page counts (83 and 64). Source inventory has no ISBN or authoritative edition identifier; its 96 pages are illustrative."
+    },
+    {
+      "localId": "pather-panchali",
+      "status": "unresolved",
+      "entityId": null,
+      "evidence": "Three same-author/year records have paperback, hardcover, and ebook formats. ISBN10 0253201861 and ISBN13 9780253201867 correspond across different records; title-language cues do not uniquely identify inventory. Source Bengali/320 pages are illustrative and no ISBN, translator, or canonical ID is supplied."
+    }
+  ],
+  "coverage": {
+    "before": {
+      "catalogueMapped": 5,
+      "catalogueTotal": 10,
+      "defaultSupported": 4,
+      "defaultEligible": 7,
+      "frozenSupported": 3,
+      "frozenEligible": 6
+    },
+    "after": {
+      "catalogueMapped": 5,
+      "catalogueTotal": 10,
+      "defaultSupported": 4,
+      "defaultEligible": 7,
+      "frozenSupported": 3,
+      "frozenEligible": 6
+    }
+  },
+  "conditionalComparison": {
+    "performed": false,
+    "reason": "No confidently expanded shortlist; no new rankings or agent generations.",
+    "filters": {
+      "maxPrice": "450",
+      "maxPages": "400",
+      "languages": [
+        "Bengali",
+        "English",
+        "Hindi"
+      ]
+    },
+    "duration": 45,
+    "eventGoal": "Plan a 45-minute interactive event with paired discussion and reflection."
+  },
+  "retention": "Only identifying fields actually returned are retained. Descriptions, images, tags, popularity and user ratings were omitted. Field-name lists describe observed structure, not a provider schema or a guarantee that omitted information does not exist elsewhere."
+}
