@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { runUsageCheck } from "../scripts/usage-check.mts";
 import { USAGE_ADMISSION_LUA, USAGE_RELEASE_LUA } from "../lib/usage-control.ts";
+import { GEMINI_PACING_LUA } from "../lib/gemini-pacing.ts";
 import { LuaUsageBackend } from "./helpers/usage-lua-store.ts";
 
 const url = "https://synthetic-check.upstash.io";
@@ -20,7 +21,7 @@ function fixture(reply: (command: Command, index: number) => Response | Promise<
     assert(Array.isArray(raw) && raw[0] === "EVAL" && typeof raw[1] === "string" && Number.isInteger(raw[2]));
     const command = { script: raw[1], keys: raw.slice(3, 3 + raw[2]) as string[], args: raw.slice(3 + raw[2]) as (string | number)[] };
     calls.push(command);
-    assert(calls.length <= 8, "the diagnostic must never dispatch a ninth REST request");
+    assert(calls.length <= 10, "the diagnostic must never dispatch an eleventh REST request");
     return reply(command, calls.length);
   };
   return { calls, fetcher };
@@ -32,15 +33,15 @@ function cleanup(command: Command) {
 
 function assertBounded(result: Awaited<ReturnType<typeof runUsageCheck>>, calls: Command[]) {
   assert.equal(result.redisRequests, calls.length);
-  assert.equal(result.maximumRedisRequests, 8);
-  assert(result.redisRequests <= 8);
+  assert.equal(result.maximumRedisRequests, 10);
+  assert(result.redisRequests <= 10);
   assert.equal(result.qlooRequests, 0);
   assert.equal(result.geminiRequests, 0);
   assert.equal(result.temporaryNamespaceOnly, true);
   for (const observation of result.observations) assert(Number.isInteger(observation.elapsedMs) && observation.elapsedMs >= 0);
 }
 
-test("manual Redis check executes production Lua across clients and deletes exactly its five isolated keys", async () => {
+test("manual Redis check executes admission and pacing Lua across clients and deletes exactly its six isolated keys", async () => {
   const backend = await LuaUsageBackend.create();
   const unrelated = "afterhours:usage:v1:unrelated-existing-record";
   backend.records.set(unrelated, { kind: "hash", values: new Map([["preserve", 1]]) });
@@ -50,8 +51,8 @@ test("manual Redis check executes production Lua across clients and deletes exac
     const fake = fixture(async (command) => {
       if (cleanup(command)) {
         deleted = command.keys;
-        assert.equal(command.keys.length, 5);
-        assert.equal(new Set(command.keys).size, 5);
+        assert.equal(command.keys.length, 6);
+        assert.equal(new Set(command.keys).size, 6);
         const namespaces = command.keys.map((key) => key.match(/^(afterhours:usage:check:[a-f0-9-]+):/)?.[1]);
         assert(namespaces[0] && namespaces.every((namespace) => namespace === namespaces[0]));
         assert(command.keys.every((key) => key.startsWith(`${namespaces[0]}:`)));
@@ -67,12 +68,19 @@ test("manual Redis check executes production Lua across clients and deletes exac
     assert.equal(result.exitCode, 0);
     assert.equal(result.cleanupAcknowledged, true);
     assert.equal(result.cleanupConfirmed, true);
-    assert.equal(fake.calls.length, 6);
-    assert.deepEqual(fake.calls.map((command) => command.script), [USAGE_ADMISSION_LUA, USAGE_ADMISSION_LUA, USAGE_ADMISSION_LUA, USAGE_RELEASE_LUA, USAGE_ADMISSION_LUA, fake.calls[5].script]);
-    assert(cleanup(fake.calls[5]));
-    assert.equal(deleted.length, 5);
+    assert.equal(fake.calls.length, 9);
+    assert.deepEqual(fake.calls.map((command) => command.script), [USAGE_ADMISSION_LUA, USAGE_ADMISSION_LUA, USAGE_ADMISSION_LUA, USAGE_RELEASE_LUA, USAGE_ADMISSION_LUA,
+      GEMINI_PACING_LUA, fake.calls[6].script, GEMINI_PACING_LUA, fake.calls[8].script]);
+    assert.equal(fake.calls[6].args.length, 11, "only bounded synthetic pacing reservations are seeded");
+    assert.equal(new Set(fake.calls[6].args).size, 11);
+    assert.deepEqual(fake.calls[5].keys, fake.calls[6].keys);
+    assert.deepEqual(fake.calls[7].keys, fake.calls[6].keys);
+    assert(fake.calls[6].keys[0].endsWith(":gemini-rpm"));
+    assert(cleanup(fake.calls[8]));
+    assert.equal(deleted.length, 6);
     assert.deepEqual([...backend.records.keys()], [unrelated]);
-    assert.deepEqual(result.observations.map((observation) => observation.stage), ["first admission", "second admission", "shared concurrency denial", "own lease release", "admission after release", "temporary-key cleanup"]);
+    assert.deepEqual(result.observations.map((observation) => observation.stage), ["first admission", "second admission", "shared concurrency denial", "own lease release", "admission after release",
+      "Gemini pacing admission", "temporary pacing saturation", "shared Gemini pacing denial", "temporary-key cleanup"]);
     assert(result.observations.every((observation) => observation.outcome === "completed" && observation.httpStatus === 200 && !observation.timedOut));
     assertBounded(result, fake.calls);
   } finally { await backend.close(); }
@@ -176,6 +184,8 @@ test("hard deadline covers stalled fetch and HTTP 200 stalled body with bounded 
 test("final temporary-key cleanup failure prevents PASS even after every admission check succeeds", async () => {
   const fake = fixture((command, index) => {
     if (cleanup(command)) return new Response("synthetic-private-cleanup-marker", { status: 503 });
+    if (index === 7) return Response.json({ result: 12 });
+    if (index === 8) return Response.json({ result: [0, 60] });
     return Response.json({ result: index === 3 ? [0, "busy", 45] : command.script === USAGE_RELEASE_LUA ? 1 : [1] });
   });
   const result = await runUsageCheck({ url, token, fetcher: fake.fetcher });
@@ -185,7 +195,7 @@ test("final temporary-key cleanup failure prevents PASS even after every admissi
   assert.equal(result.cleanupConfirmed, false);
   assert("failure" in result);
   assert.deepEqual(result.failure, { stage: "temporary-key cleanup", code: "http_failure", httpStatus: 503, timedOut: false });
-  assert.equal(fake.calls.length, 6);
+  assert.equal(fake.calls.length, 9);
   assert("limitation" in result && result.limitation?.includes("24 hours"));
   assertBounded(result, fake.calls);
 });

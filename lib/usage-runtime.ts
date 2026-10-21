@@ -1,7 +1,24 @@
 import "server-only";
 import { createUsageControl, type UsageAdmission, type UsageOperation } from "./usage-control.ts";
-import { createRedisUsageStore } from "./usage-redis.ts";
+import { createRedisUsageStore, USAGE_STORE_TIMEOUT_MS } from "./usage-redis.ts";
 import { usageVisitor } from "./usage-identity.ts";
+import { createGeminiPacing } from "./gemini-pacing.ts";
+import type { BeforeGemini } from "./event-agent.ts";
+
+/** Each model dispatch is paced against the same store, within the run's budget. */
+export const admitGeminiRequest: BeforeGemini = async (signal, remainingMs) => {
+  if (signal.aborted) return { ok: false, error: { status: 499, code: "REQUEST_CANCELLED", message: "The planning request was cancelled. Your event edits are unchanged." } };
+  const unavailable = { ok: false as const, error: { status: 503 as const, code: "USAGE_UNAVAILABLE",
+    message: "Shared Gemini request pacing is unavailable. Try again later; your event edits are unchanged.",
+  } };
+  if (!Number.isFinite(remainingMs) || remainingMs < 1) return unavailable;
+  try {
+    const store = createRedisUsageStore({ url: process.env.UPSTASH_REDIS_REST_URL ?? "", token: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+      timeoutMs: Math.min(USAGE_STORE_TIMEOUT_MS, Math.floor(remainingMs)),
+    });
+    return await createGeminiPacing({ store }).admit(signal);
+  } catch { return unavailable; }
+};
 
 export async function admitRequestUsage(request: Request, operation: UsageOperation): Promise<UsageAdmission> {
   if (process.env.AFTERHOURS_LIVE_ENABLED !== "true") return { ok: false, error: {

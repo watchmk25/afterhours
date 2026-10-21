@@ -59,7 +59,9 @@ export class LuaUsageBackend {
     }
     if (command === "ZREMRANGEBYSCORE") {
       let count = 0;
-      for (const [member, score] of entry?.values ?? []) if (score >= Number(field) && score <= Number(amount)) { entry!.values.delete(member); count++; }
+      const lower = field === "-inf" ? -Infinity : Number(field);
+      const upper = amount === "+inf" || amount === "inf" ? Infinity : Number(amount);
+      for (const [member, score] of entry?.values ?? []) if (score >= lower && score <= upper) { entry!.values.delete(member); count++; }
       if (entry?.values.size === 0) this.records.delete(key);
       return count;
     }

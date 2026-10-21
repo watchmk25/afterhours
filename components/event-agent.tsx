@@ -13,7 +13,7 @@ type RunState = {
 };
 const formatNumber = new Intl.NumberFormat("en", { maximumFractionDigits: 4 });
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 });
-const actions = { gemini: "Gemini model", rank_eligible_books: "Qloo eligible-book ranking", validation: "Proposal validation" };
+const actions = { usage_admission: "Shared usage admission", gemini_pacing: "Gemini request pacing", gemini: "Gemini model", rank_eligible_books: "Qloo eligible-book ranking", validation: "Proposal validation" };
 
 function historicalDraft(proposal: EventProposal): ProposalDraft {
   return {

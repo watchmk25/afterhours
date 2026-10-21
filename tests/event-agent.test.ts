@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { setImmediate as nextTurn } from "node:timers/promises";
 import type { Interactions } from "@google/genai";
-import { createEventAgent } from "../lib/event-agent.ts";
+import { createEventAgent, type BeforeGemini } from "../lib/event-agent.ts";
 import type { EventAgentInput, ProposalDraft } from "../lib/event-types.ts";
 import { GeminiProviderError, type GeminiProvider, type GeminiTurn } from "../lib/gemini-provider.ts";
 import { QLOO_PRESETS, SAMPLE_QLOO_MAPPINGS } from "../lib/qloo-sample.ts";
@@ -75,7 +75,7 @@ function rankedResponse(url: URL) {
 }
 
 function harness(replies: Reply[], options: {
-  qlooReply?: QlooReply; geminiConfigured?: boolean; qlooConfigured?: boolean; overallTimeoutMs?: number;
+  qlooReply?: QlooReply; geminiConfigured?: boolean; qlooConfigured?: boolean; overallTimeoutMs?: number; beforeGemini?: BeforeGemini;
 } = {}) {
   const geminiCalls: { turn: GeminiTurn; signal: AbortSignal }[] = [];
   const qlooCalls: { url: URL; options: RequestInit }[] = [];
@@ -96,7 +96,7 @@ function harness(replies: Reply[], options: {
   const optionsForQloo = options.qlooReply ?? rankedResponse;
   const qloo = createQlooService({ credential: fixtureKey, minimumCandidates: 1, fetcher, signingKey: "synthetic-event-signing-key" });
   const agent = createEventAgent({ gemini, qloo, geminiConfigured: options.geminiConfigured ?? true,
-    qlooConfigured: options.qlooConfigured ?? true, overallTimeoutMs: options.overallTimeoutMs });
+    qlooConfigured: options.qlooConfigured ?? true, overallTimeoutMs: options.overallTimeoutMs, beforeGemini: options.beforeGemini });
   return { agent, geminiCalls, qlooCalls };
 }
 
@@ -380,4 +380,138 @@ test("overall timeout propagates into Qloo and prevents a subsequent model reque
   deliver(rankedResponse(fixture.qlooCalls[0].url)); await nextTurn();
   assert.equal(fixture.geminiCalls.length, 1);
   assert.equal(fixture.qlooCalls.length, 1);
+});
+
+const pacingRejection = () => ({ ok: false as const, error: { status: 429 as const, code: "GEMINI_PACING_LIMIT",
+  message: "The planner is at its short-term limit. Wait 31 seconds before trying again.", retryAfterSeconds: 31 } });
+
+test("pacing rejects the initial model call before counting or dispatching either provider", async () => {
+  let checks = 0;
+  const fixture = harness([], { beforeGemini: async (signal, remainingMs) => {
+    checks++;
+    assert(!signal.aborted && remainingMs > 0 && remainingMs <= 30_000);
+    return pacingRejection();
+  } });
+  const result = await fixture.agent.run(input());
+  assert.equal(result.status, 429);
+  assert(!result.body.ok && result.body.error.code === "GEMINI_PACING_LIMIT");
+  assert.equal(result.body.error.retryAfterSeconds, 31);
+  assert.deepEqual(result.body.usage, { geminiRequests: 0, qlooRequests: 0 });
+  assert.equal(fixture.geminiCalls.length + fixture.qlooCalls.length, 0);
+  assert.equal(checks, 1);
+  assert.deepEqual(result.body.trace.map(({ action, status }) => ({ action, status })), [{ action: "gemini_pacing", status: "failed" }]);
+});
+
+test("continuation pacing rejection preserves actual first-model and fresh Qloo accounting", async () => {
+  let checks = 0;
+  const fixture = harness([toolInteraction(), proposal()], { beforeGemini: async () => ++checks === 1 ? { ok: true } : pacingRejection() });
+  const result = await fixture.agent.run(input());
+  assert(!result.body.ok && result.body.error.code === "GEMINI_PACING_LIMIT");
+  assert.equal(result.status, 429);
+  assert.deepEqual(result.body.usage, { geminiRequests: 1, qlooRequests: 1 });
+  assert.equal(fixture.geminiCalls.length, 1);
+  assert.equal(fixture.qlooCalls.length, 1);
+  assert.equal(checks, 2);
+  assert.deepEqual(result.body.trace.map(({ action, status }) => ({ action, status })), [
+    { action: "gemini_pacing", status: "completed" }, { action: "gemini", status: "completed" },
+    { action: "rank_eligible_books", status: "completed" }, { action: "gemini_pacing", status: "failed" },
+  ]);
+  assert(result.body.trace.every(({ elapsedMs }) => Number.isInteger(elapsedMs) && elapsedMs! >= 0));
+});
+
+test("a permitted repair must pass pacing before its third model dispatch", async () => {
+  let checks = 0;
+  const invalid = { ...draft(), evidenceRefs: ["fabricated"] };
+  const fixture = harness([toolInteraction(), proposal(invalid), proposal()], { beforeGemini: async () => ++checks < 3 ? { ok: true } : pacingRejection() });
+  const result = await fixture.agent.run(input());
+  assert(!result.body.ok && result.body.error.code === "GEMINI_PACING_LIMIT");
+  assert.deepEqual(result.body.usage, { geminiRequests: 2, qlooRequests: 1 });
+  assert.equal(fixture.geminiCalls.length, 2);
+  assert.equal(fixture.qlooCalls.length, 1);
+  assert.equal(checks, 3);
+  assert(result.body.trace.some(step => step.action === "validation" && step.status === "failed"));
+  assert.equal(result.body.trace.at(-1)?.action, "gemini_pacing");
+});
+
+test("successful paced native continuation and repair retain signatures and the original request limits", async () => {
+  let checks = 0;
+  const budgets: number[] = [];
+  const native = toolInteraction();
+  const fixture = harness([native, proposal({ ...draft(), evidenceRefs: ["invalid-evidence"] }), proposal()], {
+    beforeGemini: async (signal, remainingMs) => {
+      assert(!signal.aborted);
+      assert.equal(fixture.geminiCalls.length, checks, "pacing precedes each actual model dispatch");
+      checks++;
+      budgets.push(remainingMs);
+      return { ok: true };
+    },
+  });
+  const result = await fixture.agent.run(input());
+  assert(result.body.ok && result.body.result.status === "proposal");
+  assert.deepEqual(result.body.usage, { geminiRequests: 3, qlooRequests: 1 });
+  assert.equal(checks, 3);
+  assert.equal(fixture.qlooCalls.length, 1);
+  assert(budgets.every((remaining, index) => remaining > 0 && remaining <= (index ? budgets[index - 1] : 30_000)));
+  assert.equal(result.body.trace.filter(step => step.action === "gemini_pacing" && step.status === "completed").length, 3);
+  assert.deepEqual(steps(fixture.geminiCalls[2].turn).slice(1, 3), native.steps);
+  assert.equal(fixture.geminiCalls[2].turn.generation_config?.tool_choice, "none");
+  assert(!JSON.stringify(result.body).includes(hiddenMarker));
+});
+
+test("invalid or unconfigured event preflight skips pacing as well as both providers", async () => {
+  let checks = 0;
+  const beforeGemini: BeforeGemini = async () => { checks++; return { ok: true }; };
+  const missing = harness([], { geminiConfigured: false, beforeGemini });
+  assert(!(await missing.agent.run(input())).body.ok);
+  const invalid = harness([], { beforeGemini });
+  assert(!(await invalid.agent.run({ ...input(), catalogueSource: "imported" })).body.ok);
+  assert.equal(checks, 0);
+  assert.equal(missing.geminiCalls.length + invalid.geminiCalls.length + invalid.qlooCalls.length, 0);
+});
+
+test("unexpected pacing-store failures reject without exposing details or trying providers", async () => {
+  const fixture = harness([], { beforeGemini: async () => { throw new Error(`synthetic pacing error ${fixtureKey}`); } });
+  const result = await fixture.agent.run(input());
+  assert.equal(result.status, 503);
+  assert(!result.body.ok && result.body.error.code === "USAGE_UNAVAILABLE");
+  assert.deepEqual(result.body.usage, { geminiRequests: 0, qlooRequests: 0 });
+  assert.equal(fixture.geminiCalls.length + fixture.qlooCalls.length, 0);
+  assert(!JSON.stringify(result.body).includes(fixtureKey));
+});
+
+test("cancellation during pacing rejects late admission before any model dispatch", async () => {
+  let deliver!: (value: { ok: true }) => void;
+  let pacingSignal: AbortSignal | undefined;
+  const pending = new Promise<{ ok: true }>(resolve => { deliver = resolve; });
+  const fixture = harness([], { beforeGemini: async signal => { pacingSignal = signal; return pending; } });
+  const controller = new AbortController();
+  const running = fixture.agent.run(input(), controller.signal);
+  await nextTurn(); controller.abort();
+  const result = await running;
+  assert(!result.body.ok && result.body.error.code === "RUN_CANCELLED");
+  assert(pacingSignal?.aborted);
+  assert.deepEqual(result.body.usage, { geminiRequests: 0, qlooRequests: 0 });
+  deliver({ ok: true }); await nextTurn();
+  assert.equal(fixture.geminiCalls.length + fixture.qlooCalls.length, 0);
+  assert.equal(result.body.trace.at(-1)?.action, "gemini_pacing");
+  assert.equal(result.body.trace.at(-1)?.deadline, "user_cancel");
+});
+
+test("pacing shares the overall deadline and cannot start a model after expiry", async () => {
+  let deliver!: (value: { ok: true }) => void;
+  let pacingSignal: AbortSignal | undefined;
+  const pending = new Promise<{ ok: true }>(resolve => { deliver = resolve; });
+  const fixture = harness([], { overallTimeoutMs: 15, beforeGemini: async (signal, remainingMs) => {
+    pacingSignal = signal;
+    assert(remainingMs > 0 && remainingMs <= 15);
+    return pending;
+  } });
+  const result = await fixture.agent.run(input());
+  assert(!result.body.ok && result.body.error.code === "RUN_TIMEOUT");
+  assert.equal(result.status, 504);
+  assert(pacingSignal?.aborted);
+  deliver({ ok: true }); await nextTurn();
+  assert.equal(fixture.geminiCalls.length + fixture.qlooCalls.length, 0);
+  assert.equal(result.body.trace.at(-1)?.action, "gemini_pacing");
+  assert.equal(result.body.trace.at(-1)?.deadline, "agent_run");
 });

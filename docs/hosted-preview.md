@@ -1,5 +1,11 @@
 # Protected release preview
 
+The current branch adds shared usage reservations, leases, and rolling Gemini
+pacing. See [the pacing verification record](gemini-pacing.md) for the current
+local/Redis results and hosted verification status. The successful hosted
+generation and Preview URLs below are historical; they do not verify the new
+shared controls. Vercel CLI connectivity is currently blocking a new Preview.
+
 For the subsequent audience-setup, applied-context, cancellation, and duration
 corrections with zero live calls, see the [audience-to-event verification record](audience-event-journey.md).
 Its [current protected Preview](https://afterhours-6p14f62rq-sam-3b2d.vercel.app)
@@ -191,11 +197,16 @@ source commit do not change its application runtime.
 
 ## Before anonymous public release
 
-Current bounds protect individual invocations; they do **not** impose shared
+At the historical release described above, bounds protected individual invocations; they did **not** impose shared
 quotas, aggregate spending limits, or concurrency limits across requests or
 serverless instances. UI duplicate-submit prevention is local to a browser.
 Entity-reference HMAC signatures verify entity integrity across instances, not
 caller identity. Origin checks allow absent Origin and are not authentication.
+
+The current branch now implements shared reservations, concurrency leases and
+12-request rolling-minute Gemini pacing. Its local and isolated Redis checks
+pass, while hosted identity, pause, and live acceptance remain unverified until
+the [current protected-host verification](gemini-pacing.md) can complete.
 
 Before removing protection, define an access policy and authenticated identity
 or equivalent gate; enforce durable per-user/IP and global request/spending

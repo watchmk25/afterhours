@@ -2,7 +2,7 @@
 
 This preparation adds a server-only admission layer for AfterHours' eventual anonymous demo. It covers `POST /api/qloo/search`, `POST /api/qloo/rank`, and `POST /api/event-agent`, including generation and revision. No application account is required. Browsing, local CSV processing, eligibility filters, fixed templates, existing drafts, and explicit Apply remain available independently of Redis and provider access.
 
-**Latest real-store verification: PASS.** After the organizer saved the REST credentials, one bounded Redis-only invocation completed **6 Redis requests**, all HTTP 200, with confirmed temporary-key cleanup. It made **0 Qloo requests and 0 Gemini requests**. The existing local visitor secret was preserved and live application actions remain explicitly disabled. No database was provisioned or reconfigured; hosting/provider configuration and production counters were unchanged. Account/Free-plan settings and trusted hosting are separate unverified release items.
+**Latest extended real-store check: PASS, including Gemini pacing.** One bounded invocation completed **9 Redis requests**, all HTTP 200, with cleanup acknowledged and confirmed, and **0 live Qloo/Gemini requests**. The earlier six-request admission/lease PASS below is historical and predates pacing. Current offline and 56 local Chromium checks passed; Vercel CLI connection timeouts still block hosted verification. Live application actions remain explicitly disabled. No database was provisioned or reconfigured. See [the separate pacing record and nine-stage timings](gemini-pacing.md) for current results and limits; the historical evidence below is preserved.
 
 ## Configuration and operator switch
 
@@ -36,11 +36,14 @@ The constants in `lib/usage-control.ts` are deliberately small and shared by eve
 | Visitor event runs, including revisions | 6 | One hour |
 | Shared Qloo reservations | 100 | 24 hours |
 | Shared Gemini reservations | 90 | 24 hours |
+| Shared Gemini dispatch reservations | 12 | Rolling 60 seconds, before each individual model request |
 | Shared event concurrency | 2 admitted runs | Each lease expires after 45 seconds |
 
 The visitor hash has independent search/rank/event fields but one common first-admission expiry. The global hash similarly has one common first-admission expiry for its Qloo/Gemini fields. Later admissions do not extend either window. These are fixed windows anchored at first admission, not sliding windows or UTC-day global quotas; bursts are possible at a window boundary.
 
 Each admitted standalone search or ranking reserves **one Qloo request**. Each admitted event run reserves **three Gemini requests and one Qloo ranking** before any provider work, covering the current maximum including a permitted repair. Normal successful execution may use only two Gemini requests; the unused reservation is intentionally not returned. Failed, clarified, cancelled, or timed-out admitted work retains its reservation, because dispatch and provider accounting can be uncertain. Thirty event reservations exhaust the shared Gemini budget, even if actual model traffic is lower. Searches and standalone rankings consume the same Qloo allowance as event rankings.
+
+The additional Gemini pacing layer uses a separate atomic rolling-window script immediately before **every initial, continuation, and repair request**. It admits at most **12 request reservations per 60 seconds** across instances sharing the database/namespace. Redis `TIME` supplies the clock; only random reservation IDs and timestamps enter its sorted set. Expired members are removed before checking the count, and the key expires 60 seconds after its latest accepted reservation. Pacing does not reserve all three minute slots at event admission. A later continuation can therefore be denied after earlier work completed. No minute or daily reservation is refunded, including after cancellation or a lost response. See [pacing details](gemini-pacing.md).
 
 Invalid input, missing provider configuration, deterministic clarification, invalid/unconfirmed interests, and insufficient eligible candidates are checked before shared admission and provider dispatch. A denied limit/busy admission does not increment visitor/provider counters. Admission is not a record of actual provider consumption: the response's ordinary agent trace/usage and these conservative reservations have different purposes.
 
@@ -52,14 +55,17 @@ One bounded Redis `EVAL` checks visitor limits, shared provider budgets, and eve
 
 The runtime uses built-in fetch with a **one-second deadline per store operation**, including response reads, a 16 KiB response cap, no redirects, no automatic retries, and strict JSON/result validation. Credentials remain in a server authorization header, never the URL. A cleanup operation gets its own bounded deadline, so rejection/cleanup can add store overhead around the unchanged provider deadlines.
 
+Each Gemini pacing operation receives the smaller of one second and the remaining 30-second agent budget. Accepted pacing does not extend that budget or the 20-second Gemini request bound. A failed, timed-out, cancelled, or malformed pacing response prevents the next Gemini dispatch; an availability fallback never permits it. A full minute window returns immediately rather than waiting or queuing.
+
 No Upstash client or rate-limit SDK is imported. This choice avoids adopting an availability bypass: the official rate-limit SDK documents an allow-on-timeout behavior, while the Redis SDK defaults to network retries. Store failure here always rejects live work. [Rate-limit timeout behavior](https://upstash.com/docs/redis/sdks/ratelimit-ts/features), [Redis SDK retries](https://upstash.com/docs/redis/sdks/ts/retries)
 
 | Condition | Public behavior |
 | --- | --- |
 | Disabled live switch | HTTP 503, `LIVE_DISABLED`; organizer-paused guidance. |
-| Missing/malformed store or visitor configuration, unavailable store, timeout, malformed response | HTTP 503, `USAGE_UNAVAILABLE`; retry later, with no provider dispatch. |
+| Missing/malformed store or visitor configuration, unavailable store, timeout, malformed response | HTTP 503, `USAGE_UNAVAILABLE`; retry later. Admission failure prevents all dispatch; a later pacing failure prevents the next Gemini dispatch and preserves actual earlier usage. |
 | Visitor/global allowance exhausted | HTTP 429, `USAGE_LIMITED`; known remaining-window seconds in message and `Retry-After`. |
 | Both event slots occupied | HTTP 429, `USAGE_BUSY`; retry guidance based on earliest lease expiry. |
+| Shared Gemini rolling-minute allowance full | HTTP 429, `GEMINI_PACING_LIMIT`; 1–60 seconds until the earliest reservation expires, in the message and `Retry-After`. Existing edits remain available. |
 | Cancellation before admission/dispatch | Rejected cancellation, with no provider dispatch. |
 
 Rejections preserve existing event edits. The UI does not silently retry, generate a fallback proposal, change the selected book, or Apply content. A brief store outage deliberately makes live actions unavailable while local workspace operations continue.
@@ -73,6 +79,8 @@ Cleanup is attempted after success, failure, or cancellation, independently of t
 Only a server-confirmed Vercel runtime (`VERCEL=1`) may use `x-vercel-forwarded-for`. The code validates a single IP, normalizes IPv6 spelling, and derives an HMAC-SHA256 identifier from the server secret, current UTC day, and normalized address. It does not trust client-supplied `x-forwarded-for`, `x-real-ip`, arbitrary lists, a user-provided identifier, or browser storage. Vercel documents platform-owned request IP headers and its spoofing protections. [Vercel request headers](https://vercel.com/docs/headers/request-headers)
 
 Redis contains only daily-derived visitor hashes, operation/provider counts, random lease IDs, and bounded expiries. Visitor keys expire after at most one hour from their first admission; global counters expire after 24 hours; each lease is valid for at most 45 seconds. No raw IP, prompt, audience interest, catalogue, outline, credential, or saved workspace data enters these keys/values. The secret and raw header are used in server memory only and are not logged by the layer.
+
+The shared Gemini pacing set additionally stores at most twelve random reservation IDs with Redis-time scores. A reservation is valid for 60 seconds; a stale member can physically remain until a later admission prunes it or the key expires, for less than 120 seconds from creation. This set has no visitor or content metadata.
 
 The lease set expires 45 seconds after its latest admission; expired members are also removed before every admission. An old member can physically remain after its own 45-second validity until the set expires, for less than 90 seconds from creation. It never counts toward concurrency after its score expires.
 
@@ -88,9 +96,9 @@ After privately configuring the account-owned Free database, run:
 npm run usage
 ```
 
-`npm run usage:check` remains an alias for the same helper. The helper uses existing `@next/env` loading, so inherited process values take precedence over ignored `.env.local`. It imports no provider integration and makes no Qloo/Gemini requests. It uses a random `afterhours:usage:check:<uuid>` namespace, synthetic visitor hashes, and **at most eight Redis REST requests**, each under the same one-second bound.
+`npm run usage:check` remains an alias for the same helper. The helper uses existing `@next/env` loading, so inherited process values take precedence over ignored `.env.local`. It imports no provider integration and makes no Qloo/Gemini requests. It uses a random `afterhours:usage:check:<uuid>` namespace, synthetic visitor hashes, and **at most ten Redis REST requests** (nine on the normal successful path), each under the same one-second bound.
 
-The check admits two events through separate control instances, verifies denial of a third simultaneous admission, releases one run's lease, verifies a new admission, and deletes only its five exact temporary keys. A successful result requires confirmed cleanup. If cleanup cannot be confirmed, all temporary data has existing bounded TTLs, at most 24 hours, and the result remains UNVERIFIED. It never scans or clears unrelated keys.
+The check admits two events through separate control instances, verifies denial of a third simultaneous admission, releases one run's lease, and verifies a new admission. It then admits one Gemini pacing reservation, adds eleven synthetic UUID entries only to its isolated temporary pacing key, and verifies shared denial from another pacing instance. It deletes only its six exact temporary keys, including that pacing key. It never seeds, inspects, or resets the application's allowance. A successful result requires confirmed cleanup. If cleanup cannot be confirmed, all temporary data has existing bounded TTLs, at most 24 hours, and the result remains UNVERIFIED. It never scans or clears unrelated keys.
 
 Without both REST credentials the helper prints a fixed sanitized UNVERIFIED summary, reports zero requests, and exits 2. With credentials, success exits 0; failure or unconfirmed cleanup exits 1 and reports only sanitized stage/count information. Do not infer provider access, public usability, account ownership, Free-plan settings, trusted-host header handling, or anonymous abuse resistance from this store-only result.
 
@@ -138,6 +146,10 @@ Actual totals for this invocation: **6 Redis requests of the maximum 8; 0 Qloo r
 This verifies authentication and the actual Redis operations used for shared admission, concurrency denial, own-lease release, admission after release, and temporary-key cleanup on the configured store. It does not establish sustained availability, failover behavior, all real-time expiry/budget boundaries, account ownership, Free-plan/eviction settings, trusted hosted visitor identity, or provider access. Live application actions remain disabled. No code/dependency changes were needed; this follow-up changes documentation only, so the prior passing offline checks were reused and the full application suite was not repeated. `.env.local` remains ignored/untracked; main, production, Preview protection, and repository privacy remain unchanged.
 
 ## Offline checks and release boundaries
+
+For the subsequent rolling-minute pacing implementation, lint, explicit TypeScript, **289 Node tests**, production build, and **56 local production Chromium checks in 1.7 minutes** passed. One extended Redis-only invocation **passed with 9/10 maximum requests**, all HTTP 200, with cleanup acknowledged and confirmed. Only the six exact temporary keys were used; application counters were not reset, and the task sent **0 live Qloo requests and 0 live Gemini requests**. See [the nine-stage timings and pacing verification](gemini-pacing.md). These current results are separate from the historical checks below.
+
+Hosted verification remains **UNVERIFIED**: Node/Vercel CLI metadata requests fail with `UND_ERR_CONNECT_TIMEOUT`, including an IPv4-first read. A separate plain Windows HTTP check returned 308, which does not establish CLI/API connectivity or hosted functionality. No new Preview or live Gemini/Qloo request has been attempted. The existing local live switch remains false and no local environment values were changed. A hosted operator-pause check also remains unverified; the offline default-off rejection checks passed.
 
 Focused tests cover shared state across independent instances, simultaneous admission, independent visitor limits, shared provider reservations, window expiry, own-lease release, abandoned leases, failure/timeout/cancellation, and zero provider dispatch after rejection. Transport tests reject unsafe configuration, redirects, malformed/oversized responses, and late successes. Identity tests cover untrusted headers, missing secrets, IPv6 normalization, and daily rotation. Browser checks use controlled provider/limit/busy responses to exercise edit preservation, retry guidance, keyboard access, and 390px layout without live calls.
 

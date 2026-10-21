@@ -5,8 +5,9 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createUsageControl, USAGE_RELEASE_LUA, type UsageAdmission, type UsageStore } from "../lib/usage-control.ts";
 import { createRedisUsageStore, USAGE_STORE_TIMEOUT_MS } from "../lib/usage-redis.ts";
+import { createGeminiPacing, GEMINI_PACING_LIMIT } from "../lib/gemini-pacing.ts";
 
-type Stage = "configuration" | "first admission" | "second admission" | "shared concurrency denial" | "own lease release" | "admission after release" | "temporary-key cleanup";
+type Stage = "configuration" | "first admission" | "second admission" | "shared concurrency denial" | "own lease release" | "admission after release" | "Gemini pacing admission" | "temporary pacing saturation" | "shared Gemini pacing denial" | "temporary-key cleanup";
 type Outcome = "completed" | "http_failure" | "timeout" | "transport_failure" | "response_or_redis_error" | "request_budget";
 type Observation = { stage: Stage; elapsedMs: number; httpStatus?: number; timedOut: boolean; outcome: Outcome };
 type Failure = { stage: Stage; code: Outcome | "configuration" | "unexpected_check_result"; httpStatus?: number; timedOut: boolean };
@@ -22,7 +23,7 @@ export async function runUsageCheck({ url, token, fetcher = fetch, timeoutMs = U
   const observations: Observation[] = [];
   const summary = () => ({
     realStore: passed && cleanup && !failure ? "PASS" : "UNVERIFIED",
-    lastStage: stage, redisRequests: requests, maximumRedisRequests: 8,
+    lastStage: stage, redisRequests: requests, maximumRedisRequests: 10,
     cleanupConfirmed: cleanup, cleanupAcknowledged, temporaryNamespaceOnly: true,
     qlooRequests: 0, geminiRequests: 0, observations,
     ...(failure ? { failure } : {}),
@@ -32,7 +33,8 @@ export async function runUsageCheck({ url, token, fetcher = fetch, timeoutMs = U
 
   const namespace = `afterhours:usage:check:${randomUUID()}`;
   const visitors = Array.from({ length: 3 }, (_, index) => createHash("sha256").update(`${namespace}:${index}`).digest("hex"));
-  const keys = [`${namespace}:global`, `${namespace}:leases`, ...visitors.map(visitor => `${namespace}:visitor:${visitor}`)];
+  const pacingKey = `${namespace}:gemini-rpm`;
+  const keys = [`${namespace}:global`, `${namespace}:leases`, ...visitors.map(visitor => `${namespace}:visitor:${visitor}`), pacingKey];
   let store: UsageStore | undefined;
   let finalCleanup = false;
   let active: { observation: Observation; finished: boolean; detach?: () => void } | undefined;
@@ -41,7 +43,7 @@ export async function runUsageCheck({ url, token, fetcher = fetch, timeoutMs = U
   try {
     const transport = createRedisUsageStore({ url, token, timeoutMs, fetcher: async (input, options) => {
       const current = active!;
-      if (requests >= 8 || new URL(String(input)).origin !== new URL(url).origin) {
+      if (requests >= 10 || new URL(String(input)).origin !== new URL(url).origin) {
         current.observation.outcome = "request_budget";
         throw new Error("Diagnostic request rejected.");
       }
@@ -97,6 +99,23 @@ export async function runUsageCheck({ url, token, fetcher = fetch, timeoutMs = U
     assert(!failure);
     stage = "admission after release";
     accepted(await second.admit(visitors[2], "event"));
+    stage = "Gemini pacing admission";
+    const pacing = createGeminiPacing({ store, namespace });
+    assert((await pacing.admit()).ok);
+    stage = "temporary pacing saturation";
+    // Eleven synthetic IDs fill only this isolated diagnostic key. This does not
+    // send Gemini requests or reset, seed, or inspect the application pacing key.
+    const seeded = await store.evaluate(`
+local clock = redis.call('TIME')
+local now = tonumber(clock[1]) * 1000.0 + math.floor(tonumber(clock[2]) / 1000)
+for index = 1, #ARGV do redis.call('ZADD', KEYS[1], now, ARGV[index]) end
+redis.call('PEXPIRE', KEYS[1], 60000)
+return redis.call('ZCARD', KEYS[1])
+`, [pacingKey], Array.from({ length: GEMINI_PACING_LIMIT - 1 }, () => randomUUID()));
+    assert.equal(seeded, GEMINI_PACING_LIMIT);
+    stage = "shared Gemini pacing denial";
+    const paced = await createGeminiPacing({ store, namespace }).admit();
+    assert(!paced.ok && paced.error.code === "GEMINI_PACING_LIMIT" && Number.isInteger(paced.error.retryAfterSeconds));
     passed = true;
   } catch {
     failure ??= { stage, code: stage === "configuration" ? "configuration" : "unexpected_check_result", timedOut: false };
@@ -105,7 +124,7 @@ export async function runUsageCheck({ url, token, fetcher = fetch, timeoutMs = U
       stage = "temporary-key cleanup";
       finalCleanup = true;
       try {
-        await store.evaluate("return redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5])", keys, []);
+        await store.evaluate("return redis.call('DEL', KEYS[1], KEYS[2], KEYS[3], KEYS[4], KEYS[5], KEYS[6])", keys, []);
         cleanupAcknowledged = true;
         // A timed-out write may still finish after this DEL on another connection.
         // Do not infer absence of late writes from a cleanup acknowledgment alone.

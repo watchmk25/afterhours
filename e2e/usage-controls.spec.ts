@@ -260,3 +260,115 @@ test("denied revisions preserve applied evidence and edits with keyboard access 
   await page.screenshot({ path: screenshotPath, fullPage: true });
   await testInfo.attach("Controlled admission denial with preserved applied event at 390px", { path: screenshotPath, contentType: "image/png" });
 });
+
+for (const stage of ["initial", "continuation"] as const) {
+  test(`${stage} Gemini pacing denial preserves the applied event without automatic retries at 390px`, async ({ page }, testInfo) => {
+    const requests: string[] = [];
+    const value = controlledProposal();
+    const retrySeconds = stage === "initial" ? 18 : 12;
+    const message = `The shared live planner is at its short-term request limit. Wait ${retrySeconds} seconds before trying again. Your current edits remain available.`;
+    const usage = stage === "initial" ? { geminiRequests: 0, qlooRequests: 0 } : { geminiRequests: 1, qlooRequests: 1 };
+    const trace: EventAgentResponse["trace"] = stage === "initial" ? [
+      { action: "usage_admission", status: "completed", detail: "Controlled initial shared admission accepted.", elapsedMs: 2 },
+      { action: "gemini_pacing", status: "failed", detail: "Controlled shared minute allowance denied before any provider dispatch.", elapsedMs: 2 },
+    ] : [
+      { action: "usage_admission", status: "completed", detail: "Controlled initial shared admission accepted.", elapsedMs: 2 },
+      { action: "gemini_pacing", status: "completed", detail: "Controlled shared minute allowance accepted the first request.", elapsedMs: 2 },
+      { action: "gemini", status: "completed", detail: "Controlled native ranking tool request returned.", elapsedMs: 5 },
+      { action: "rank_eligible_books", status: "completed", detail: "Controlled current-run ranking supplied.", elapsedMs: 3 },
+      { action: "gemini_pacing", status: "failed", detail: "Controlled shared pacing denied continuation before another Gemini dispatch.", elapsedMs: 2 },
+    ];
+    await page.route("**/api/**", async (route) => {
+      const path = new URL(route.request().url()).pathname;
+      requests.push(path);
+      if (path !== "/api/event-agent" || requests.length > 2) {
+        await route.abort();
+        throw new Error("Pacing denial must not trigger fallback work or automatic retries");
+      }
+      expect(route.request().method()).toBe("POST");
+      if (requests.length === 1) {
+        await route.fulfill({ json: { ok: true, result: { status: "proposal", proposal: value }, trace: [], usage: { geminiRequests: 2, qlooRequests: 1 } } satisfies EventAgentResponse });
+      } else {
+        expect(route.request().postDataJSON()).toMatchObject({ mode: "revise", duration: 45, filters: { maxPrice: "400" } });
+        await route.fulfill({ status: 429, headers: { "Retry-After": String(retrySeconds) }, json: { ok: false, error: { code: "GEMINI_PACING_LIMIT", message }, trace, usage } satisfies EventAgentResponse });
+      }
+    });
+
+    await exampleWithDraft(page);
+    await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
+    const preview = page.getByRole("region", { name: "Event proposal preview", exact: true });
+    await expect(preview).toBeVisible();
+    await expectDraft(page);
+    await preview.getByRole("button", { name: "Apply proposal", exact: true }).click();
+    const context = outline(page).getByRole("region", { name: "Applied event context", exact: true });
+    await context.getByText("Applied filters and numerical evidence", { exact: true }).click();
+    const edits = {
+      "Event title": "Keep this applied gathering during shared pacing",
+      "Running order": "An organizer's carefully revised running order",
+      "Discussion prompts": "A participant may pass on any question",
+      "Materials": "Large-print cards and quiet-room signs",
+      "Invitation": "My reviewed invitation wording stays intact",
+      "Organizer notes": "Keep accessible seating",
+    };
+    for (const [label, text] of Object.entries(edits)) await page.getByLabel(label, { exact: true }).fill(text);
+    await page.getByLabel("Max price per copy", { exact: true }).fill("400");
+    await expect(context.getByRole("status")).toContainText("Based on previous inputs.");
+    const request = planner(page).getByLabel("Event request", { exact: true });
+    await keyboardFocus(page, request);
+    await page.keyboard.press("ControlOrMeta+A");
+    await page.keyboard.type("Keep a 45-minute interactive event with optional discussion.");
+    const revise = planner(page).getByRole("button", { name: "Revise proposal", exact: true });
+    await keyboardFocus(page, revise);
+    await page.keyboard.press("Enter");
+    await expect(planner(page).getByRole("alert")).toHaveText(message);
+    await expect(revise).toBeEnabled();
+    await expect(planner(page).getByRole("button", { name: "Cancel generation", exact: true })).toHaveCount(0);
+    await expect(preview.getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
+    await expect(preview.getByRole("status")).toContainText("This preview is stale.");
+    await expect(shelf(page).getByRole("button", { name: "Selected: The Guide", exact: true })).toHaveAttribute("aria-pressed", "true");
+    for (const [label, text] of Object.entries(edits)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(text);
+    await expect(context).toContainText("Amélie (2001)");
+    await expect(context).toContainText("Norah Jones");
+    await expect(context).toContainText("Qloo assessed 2 of 3 eligible books; 2 had reviewed mappings.");
+    await expect(context).toContainText("Maximum ₹450 per copy");
+    await expect(context).toContainText("Qloo affinity: 0.7");
+    await expect(context).toContainText(value.warnings[0]);
+    await planner(page).getByText("Run activity", { exact: true }).click();
+    await expect(planner(page)).toContainText(`Gemini requests: ${usage.geminiRequests}`);
+    await expect(planner(page)).toContainText(`Qloo requests: ${usage.qlooRequests}`);
+    await expect(planner(page)).toContainText(trace[trace.length - 1].detail);
+    expect(requests, "The rejection must stop the run after this explicit revision").toEqual(["/api/event-agent", "/api/event-agent"]);
+
+    const notes = page.getByLabel("Organizer notes", { exact: true });
+    await keyboardFocus(page, notes);
+    await page.keyboard.press("End");
+    await page.keyboard.type(" and a quiet corner.");
+    await expect(notes).toHaveValue("Keep accessible seating and a quiet corner.");
+    await expect(planner(page).getByRole("alert")).toHaveText(message);
+    expect(requests).toHaveLength(2);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await planner(page).getByRole("alert").scrollIntoViewIfNeeded();
+    const size = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
+    expect(size).toEqual({ viewport: 390, document: 390, body: 390 });
+    const alertSize = await planner(page).getByRole("alert").evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { fontSize: Number.parseFloat(getComputedStyle(element).fontSize), left: rect.left, right: rect.right, clipped: element.scrollWidth > element.clientWidth + 1 };
+    });
+    expect(alertSize.fontSize).toBeGreaterThanOrEqual(12);
+    expect(alertSize.left).toBeGreaterThanOrEqual(0);
+    expect(alertSize.right).toBeLessThanOrEqual(390);
+    expect(alertSize.clipped).toBe(false);
+    const controls = planner(page).getByRole("button").or(planner(page).getByRole("textbox")).or(outline(page).getByRole("textbox"));
+    const clipped = await controls.evaluateAll((elements) => elements.flatMap((element) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height) return [];
+      return rect.left < -1 || rect.right > 391 || element.scrollWidth > element.clientWidth + 1
+        ? [element.id || element.textContent?.trim() || element.tagName] : [];
+    }));
+    expect(clipped, "Pacing state controls and edited outline must fit at 390px").toEqual([]);
+    const screenshotPath = testInfo.outputPath(`gemini-${stage}-pacing-preserved-event-mobile-390.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    await testInfo.attach(`Controlled ${stage} pacing denial and preserved applied event at 390px`, { path: screenshotPath, contentType: "image/png" });
+  });
+}

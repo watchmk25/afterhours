@@ -27,9 +27,21 @@ async function scenario(mode: string) {
         const command=JSON.parse(await request.text());
         assert.equal(command[0],'EVAL');
         const release=command[1].includes("redis.call('ZREM',");
-        storeCalls.push({release,command});
+        const pacing=String(command[3]).endsWith(':gemini-rpm');
+        storeCalls.push({release,pacing,command});
         if(mode==='store-failure')throw new Error('synthetic-private-store-token must remain hidden');
         if(release)return Response.json({result:1});
+        if(pacing){
+          const index=storeCalls.filter(call=>call.pacing).length;
+          if(mode==='pacing-failure')throw new Error('synthetic-private-store-token must remain hidden');
+          if(mode==='pacing-cancel'){
+            const pending=new Promise((_resolve,reject)=>request.signal.addEventListener('abort',()=>reject(new DOMException('Synthetic cancellation','AbortError')),{once:true}));
+            queueMicrotask(()=>controller.abort());
+            return pending;
+          }
+          if(mode==='pacing-initial'||mode==='pacing-continuation'&&index===2||mode==='pacing-repair'&&index===3)return Response.json({result:[0,17]});
+          return Response.json({result:[1]});
+        }
         if(mode==='limited')return Response.json({result:[0,'visitor',61]});
         if(mode==='busy')return Response.json({result:[0,'busy',9]});
         return Response.json({result:[1]});
@@ -37,11 +49,18 @@ async function scenario(mode: string) {
       if(url.origin==='https://hackathon.api.qloo.com'){
         qlooCalls++;
         assert(['/search','/v2/insights'].includes(url.pathname));
+        if(mode==='pacing-continuation'||mode==='pacing-repair')return Response.json({results:{entities:[{
+          entity_id:'DF4272D0-A6BA-445B-88DC-172A56B5D183',types:['urn:entity:book'],query:{affinity:0.5}
+        }]}});
         return Response.json({error:'synthetic-private-qloo-key must remain hidden'},{status:503});
       }
       if(url.origin==='https://generativelanguage.googleapis.com'){
         geminiCalls++;
         assert.equal(url.pathname,'/v1beta/interactions');
+        if(mode==='pacing-continuation'||mode==='pacing-repair'){
+          if(geminiCalls===1)return Response.json({id:'synthetic-native-call',status:'requires_action',steps:[{type:'function_call',id:'synthetic-call-id',name:'rank_eligible_books',arguments:{}}]});
+          return Response.json({id:'synthetic-invalid-proposal',status:'completed',steps:[{type:'model_output',content:[{type:'text',text:JSON.stringify({status:'proposal',proposal:{}})}]}]});
+        }
         if(mode==='cancel-event'){
           const pending=new Promise((_resolve,reject)=>{
             const stop=()=>reject(new DOMException('Synthetic cancellation','AbortError'));
@@ -60,7 +79,7 @@ async function scenario(mode: string) {
     const filters={maxPrice:'450',maxPages:'300',languages:['English']};
     const rank={catalogueSource:'sample',filters,interests:[{preset:'a',index:0},{preset:'a',index:1}]};
     const event={...rank,request:'Plan a welcoming interactive book event.',duration:45,mode:'generate'};
-    const operations=mode==='cancel-event'?['event']:['search','rank','event'];
+    const operations=mode==='cancel-event'||mode.startsWith('pacing-')?['event']:['search','rank','event'];
     const results=[];
     for(const operation of operations){
       storeCalls=[];qlooCalls=0;geminiCalls=0;unexpectedCalls=0;
@@ -74,8 +93,8 @@ async function scenario(mode: string) {
       const response=operation==='event'?await handleEventRequest(request):await handleQlooRequest(request,operation);
       const result=await response.json();
       const safe={operation,status:response.status,retryAfter:response.headers.get('retry-after'),body:result,
-        storeCalls:storeCalls.map(call=>({release:call.release,operation:call.release?null:call.command[6],
-          qlooReservation:call.release?null:call.command.at(-2),geminiReservation:call.release?null:call.command.at(-1)})),qlooCalls,geminiCalls,unexpectedCalls};
+        storeCalls:storeCalls.map(call=>({release:call.release,pacing:call.pacing,operation:call.release||call.pacing?null:call.command[6],
+          qlooReservation:call.release||call.pacing?null:call.command.at(-2),geminiReservation:call.release||call.pacing?null:call.command.at(-1)})),qlooCalls,geminiCalls,unexpectedCalls};
       assert.equal(unexpectedCalls,0);
       const serialized=JSON.stringify({safe,logs});
       for(const secret of ['synthetic-private-qloo-key','synthetic-private-gemini-key','synthetic-private-store-token','synthetic-private-visitor-secret-with-more-than-32-characters'])assert(!serialized.includes(secret));
@@ -96,8 +115,8 @@ async function scenario(mode: string) {
   });
   return JSON.parse(child.stdout) as {
     operation: "search" | "rank" | "event"; status: number; retryAfter: string | null;
-    body: { ok: boolean; error?: { code: string; upstreamStatus?: number }; usage?: null | { geminiRequests: number; qlooRequests: number } };
-    storeCalls: { release: boolean; operation: string | null; qlooReservation: number | null; geminiReservation: number | null }[];
+    body: { ok: boolean; error?: { code: string; upstreamStatus?: number; retryAfterSeconds?: number }; usage?: null | { geminiRequests: number; qlooRequests: number }; trace: { action: string; status: string; elapsedMs?: number }[] };
+    storeCalls: { release: boolean; pacing: boolean; operation: string | null; qlooReservation: number | null; geminiReservation: number | null }[];
     qlooCalls: number; geminiCalls: number; unexpectedCalls: number;
   }[];
 }
@@ -140,7 +159,7 @@ test("actual admitted handlers dispatch once and failed event generation cleans 
   const results = await scenario("accepted");
   for (const result of results) {
     assert.equal(result.body.ok, false, "controlled provider failure is not replaced by a success");
-    const admissions = result.storeCalls.filter((call) => !call.release);
+    const admissions = result.storeCalls.filter((call) => !call.release && !call.pacing);
     assert.equal(admissions.length, 1);
     assert.equal(admissions[0].operation, result.operation);
     assert.equal(admissions[0].qlooReservation, 1);
@@ -153,6 +172,8 @@ test("actual admitted handlers dispatch once and failed event generation cleans 
       assert.equal(result.qlooCalls, 0);
       assert.equal(result.storeCalls.filter((call) => call.release).length, 1);
       assert.deepEqual(result.body.usage, { geminiRequests: 1, qlooRequests: 0 });
+      assert.equal(result.storeCalls.filter(call => call.pacing).length, 1);
+      assert.deepEqual(result.body.trace.slice(0, 2).map(step => step.action), ["usage_admission", "gemini_pacing"]);
     } else {
       assert.equal(result.status, 502);
       assert.equal(result.body.error?.upstreamStatus, 503);
@@ -172,4 +193,47 @@ test("actual in-flight cancelled event releases its lease without falsely report
   assert.equal(result.geminiCalls, 1);
   assert.equal(result.qlooCalls, 0);
   assert.equal(result.storeCalls.filter((call) => call.release).length, 1);
+});
+
+for (const [mode, modelCalls, rankingCalls, pacingCalls] of [
+  ["pacing-initial", 0, 0, 1], ["pacing-continuation", 1, 1, 2], ["pacing-repair", 2, 1, 3],
+] as const) {
+  test(`actual event handler rejects ${mode} before that model dispatch and releases the event lease`, async () => {
+    const [result] = await scenario(mode);
+    assert.equal(result.status, 429);
+    assert.equal(result.body.error?.code, "GEMINI_PACING_LIMIT");
+    assert.equal(result.retryAfter, "17");
+    assert.equal(result.body.error?.retryAfterSeconds, 17);
+    assert.deepEqual(result.body.usage, { geminiRequests: modelCalls, qlooRequests: rankingCalls });
+    assert.equal(result.geminiCalls, modelCalls);
+    assert.equal(result.qlooCalls, rankingCalls);
+    assert.equal(result.storeCalls.filter(call => call.pacing).length, pacingCalls);
+    assert.equal(result.storeCalls.filter(call => call.release).length, 1);
+    assert.equal(result.storeCalls.filter(call => !call.release && !call.pacing).length, 1);
+    assert.equal(result.body.trace[0].action, "usage_admission");
+    assert.equal(result.body.trace[0].status, "completed");
+    assert.equal(result.body.trace.at(-1)?.action, "gemini_pacing");
+    assert.equal(result.body.trace.at(-1)?.status, "failed");
+    assert(result.body.trace.every(step => Number.isInteger(step.elapsedMs) && step.elapsedMs! >= 0));
+  });
+}
+
+test("actual pacing store failure prevents provider dispatch and still releases the outer lease", async () => {
+  const [result] = await scenario("pacing-failure");
+  assert.equal(result.status, 503);
+  assert.equal(result.body.error?.code, "USAGE_UNAVAILABLE");
+  assert.deepEqual(result.body.usage, { geminiRequests: 0, qlooRequests: 0 });
+  assert.equal(result.geminiCalls + result.qlooCalls, 0);
+  assert.equal(result.storeCalls.filter(call => call.pacing).length, 1);
+  assert.equal(result.storeCalls.filter(call => call.release).length, 1);
+});
+
+test("actual cancellation during pacing releases the event lease with no provider dispatch", async () => {
+  const [result] = await scenario("pacing-cancel");
+  assert.equal(result.status, 499);
+  assert.equal(result.body.error?.code, "REQUEST_CANCELLED");
+  assert.equal(result.body.usage, null);
+  assert.equal(result.geminiCalls + result.qlooCalls, 0);
+  assert.equal(result.storeCalls.filter(call => call.pacing).length, 1);
+  assert.equal(result.storeCalls.filter(call => call.release).length, 1);
 });

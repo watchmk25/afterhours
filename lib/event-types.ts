@@ -48,7 +48,7 @@ export type EventValidatedOutput =
   | { status: "clarification"; question: string };
 
 export type AgentAction = {
-  action: "gemini" | "rank_eligible_books" | "validation";
+  action: "usage_admission" | "gemini_pacing" | "gemini" | "rank_eligible_books" | "validation";
   status: "completed" | "failed";
   detail: string;
   elapsedMs?: number;
@@ -59,4 +59,4 @@ export type EventUsage = { geminiRequests: number; qlooRequests: number };
 
 export type EventAgentResponse =
   | { ok: true; result: EventValidatedOutput; trace: AgentAction[]; usage: EventUsage }
-  | { ok: false; error: { code: string; message: string; upstreamStatus?: number }; trace: AgentAction[]; usage: EventUsage | null };
+  | { ok: false; error: { code: string; message: string; upstreamStatus?: number; retryAfterSeconds?: number }; trace: AgentAction[]; usage: EventUsage | null };

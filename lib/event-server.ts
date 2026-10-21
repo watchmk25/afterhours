@@ -3,8 +3,9 @@ import { createEventAgent } from "./event-agent.ts";
 import { MAX_EVENT_INPUT_BYTES, parseEventInput } from "./event-validation.ts";
 import { createGeminiProvider } from "./gemini-provider.ts";
 import { createRuntimeQlooService } from "./qloo-server.ts";
-import { admitRequestUsage } from "./usage-runtime.ts";
+import { admitGeminiRequest, admitRequestUsage } from "./usage-runtime.ts";
 import { runWithUsage } from "./usage-run.ts";
+import type { AgentAction } from "./event-types.ts";
 
 const headers = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
 function rejected(status: number, message: string) {
@@ -60,7 +61,7 @@ export async function handleEventRequest(request: Request) {
       onDiagnostic: (diagnostic) => console.error("[AfterHours Gemini]", JSON.stringify(diagnostic)),
       onResponse: (snapshot) => console.info("[AfterHours Gemini response]", JSON.stringify(snapshot)),
     }) } : {}),
-    qloo,
+    qloo, beforeGemini: admitGeminiRequest,
   });
   // Reuse the existing pure preflight before reserving the conservative maximum.
   // Early validation/clarification/configuration failures cannot call providers.
@@ -71,15 +72,31 @@ export async function handleEventRequest(request: Request) {
     const result = await agent.run(value, request.signal);
     return Response.json(result.body, { status: result.status, headers });
   }
-  const guarded = await runWithUsage(() => admitRequestUsage(request, "event"), request.signal,
+  const admissionTrace: AgentAction[] = [];
+  const guarded = await runWithUsage(async () => {
+    const started = performance.now();
+    let admitted = false;
+    try {
+      const admission = await admitRequestUsage(request, "event");
+      admitted = admission.ok;
+      return admission;
+    } finally {
+      admissionTrace.push({ action: "usage_admission", status: admitted ? "completed" : "failed",
+        detail: admitted ? "Shared visitor and provider allowances and an event slot were reserved." : "Shared usage admission rejected this run before provider dispatch.",
+        elapsedMs: Math.max(0, Math.round(performance.now() - started)),
+      });
+    }
+  }, request.signal,
     () => agent.run(value, request.signal));
   // An in-flight cancellation can win before the agent returns its accounting.
   // Unknown actual dispatch counts must not be presented as zero requests.
-  if (!guarded.ok) return Response.json({ ok: false, error: guarded.error, trace: [], usage: guarded.workStarted ? null : { geminiRequests: 0, qlooRequests: 0 } }, {
+  if (!guarded.ok) return Response.json({ ok: false, error: guarded.error, trace: admissionTrace, usage: guarded.workStarted ? null : { geminiRequests: 0, qlooRequests: 0 } }, {
     status: guarded.error.status, headers: { ...headers,
       ...(guarded.error.retryAfterSeconds ? { "Retry-After": String(guarded.error.retryAfterSeconds) } : {}),
     },
   });
   const result = guarded.value;
-  return Response.json(result.body, { status: result.status, headers });
+  return Response.json({ ...result.body, trace: [...admissionTrace, ...result.body.trace] }, { status: result.status, headers: {
+    ...headers, ...(!result.body.ok && result.body.error.retryAfterSeconds ? { "Retry-After": String(result.body.error.retryAfterSeconds) } : {}),
+  } });
 }
