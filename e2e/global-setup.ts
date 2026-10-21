@@ -16,7 +16,7 @@ export default async function verifyAfterHours(config: FullConfig) {
     const html = response.body.toString("utf8");
     if (response.status !== 200 || !/<title>AfterHours\b[^<]*<\/title>/.test(html) ||
       !html.includes('id="workspace"') || !html.includes('id="eligible-books"') || !html.includes('id="event-outline"')) {
-      throw new Error("Protected Preview preflight did not return the AfterHours workspace. Check authorized access and the exact deployment target; no redirect or local fallback was followed.");
+      throw new Error(`Protected Preview preflight returned HTTP ${response.status} without the AfterHours workspace. Check authorized access and the exact deployment target; no redirect or local fallback was followed.`);
     }
     console.log(`Verified authorized protected AfterHours Preview: ${protection.origin}`);
     return;

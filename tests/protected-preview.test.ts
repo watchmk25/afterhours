@@ -6,15 +6,31 @@ import { fetchProtectedPreview, installProtectedPreviewTransport, protectedPrevi
 const origin = "https://controlled-afterhours-preview.vercel.app";
 const secret = "synthetic-preview-authorization-only";
 const configuration = { origin, secret };
+const oidcToken = "synthetic-preview-oidc.token+encoded/value=only";
+const oidcConfiguration = { origin, secret: oidcToken, headerName: "x-vercel-trusted-oidc-idp-token" as const };
 
 test("protected Preview requires explicit HTTPS Vercel target and process-only authorization", () => {
   assert.equal(protectedPreview({}), undefined);
+  assert.equal(protectedPreview({ PLAYWRIGHT_BASE_URL: origin }), undefined);
   assert.deepEqual(protectedPreview({ PLAYWRIGHT_BASE_URL: origin, VERCEL_AUTOMATION_BYPASS_SECRET: secret }), configuration);
+  assert.deepEqual(protectedPreview({ PLAYWRIGHT_BASE_URL: origin, PLAYWRIGHT_VERCEL_OIDC_TOKEN: oidcToken }), oidcConfiguration);
   for (const target of [undefined, "", "http://localhost:3000", "https://example.com", `${origin}/private`, `${origin}?secret=value`, `https://person@controlled-afterhours-preview.vercel.app`, `${origin}:444`]) {
     assert.throws(() => protectedPreview({ PLAYWRIGHT_BASE_URL: target, VERCEL_AUTOMATION_BYPASS_SECRET: secret }), /Protected Preview/);
   }
   for (const invalid of ["", " ", "synthetic\nvalue"]) {
     assert.throws(() => protectedPreview({ PLAYWRIGHT_BASE_URL: origin, VERCEL_AUTOMATION_BYPASS_SECRET: invalid }), /Protected Preview/);
+    assert.throws(() => protectedPreview({ PLAYWRIGHT_BASE_URL: origin, PLAYWRIGHT_VERCEL_OIDC_TOKEN: invalid }), /Protected Preview/);
+  }
+});
+
+test("protected Preview rejects conflicting authorization instead of selecting precedence", () => {
+  for (const bypassSecret of [secret, ""]) {
+    assert.throws(() => protectedPreview({
+      PLAYWRIGHT_BASE_URL: origin,
+      VERCEL_AUTOMATION_BYPASS_SECRET: bypassSecret,
+      PLAYWRIGHT_VERCEL_OIDC_TOKEN: oidcToken,
+    }), (error: unknown) => error instanceof Error && /exactly one process-only authorization/.test(error.message) &&
+      !error.message.includes(secret) && !error.message.includes(oidcToken));
   }
 });
 
@@ -28,6 +44,7 @@ test("protected transport adds authorization only inside exact-origin Node fetch
       assert.equal(init?.redirect, "manual");
       const headers = new Headers(init?.headers);
       assert.equal(headers.get("x-vercel-protection-bypass"), secret);
+      assert.equal(headers.has("x-vercel-trusted-oidc-idp-token"), false);
       assert.equal(headers.get("accept"), "application/javascript");
       assert.equal(headers.get("origin"), origin);
       assert.equal(headers.has("cookie"), false);
@@ -49,6 +66,37 @@ test("protected transport adds authorization only inside exact-origin Node fetch
   }), /Protected preview transport failed/);
 });
 
+test("protected OIDC authorization stays in Node fetch and neither credential header reaches the browser", async () => {
+  let calls = 0;
+  const response = await fetchProtectedPreview(oidcConfiguration, `${origin}/_next/static/example.js`, {
+    headers: {
+      Accept: "application/javascript",
+      "x-vercel-protection-bypass": "untrusted-browser-bypass",
+      "x-vercel-trusted-oidc-idp-token": "untrusted-browser-token",
+    },
+    fetcher: async (input, init) => {
+      calls += 1;
+      assert.equal(String(input), `${origin}/_next/static/example.js`);
+      assert.equal(init?.redirect, "manual");
+      const headers = new Headers(init?.headers);
+      assert.equal(headers.get("x-vercel-trusted-oidc-idp-token"), oidcToken);
+      assert.equal(headers.has("x-vercel-protection-bypass"), false);
+      return new Response(`controlled ${oidcToken} encoded ${encodeURIComponent(oidcToken)}`, { headers: {
+        "content-type": "application/javascript",
+        "x-vercel-protection-bypass": "withheld-even-when-not-selected",
+        "x-vercel-trusted-oidc-idp-token": oidcToken,
+        "x-echo-private": encodeURIComponent(oidcToken),
+        "set-cookie": `authorization=${oidcToken}`,
+      } });
+    },
+  });
+  assert.equal(calls, 1);
+  assert.equal(response.body.toString(), "controlled [redacted] encoded [redacted]");
+  assert.deepEqual(response.headers, { "content-type": "application/javascript" });
+  assert.equal(JSON.stringify(response).includes(oidcToken), false);
+  assert.equal(JSON.stringify(response).includes(encodeURIComponent(oidcToken)), false);
+});
+
 test("protected transport rejects other origins without fetch and never follows redirects", async () => {
   let calls = 0;
   const fetcher: typeof fetch = async (_input, init) => {
@@ -56,8 +104,10 @@ test("protected transport rejects other origins without fetch and never follows 
     assert.equal(init?.redirect, "manual");
     return new Response("", { status: 302, headers: { location: "https://other.example/" } });
   };
-  for (const target of ["https://other.example/", "https://other-preview.vercel.app/", "not a URL", `https://person@controlled-afterhours-preview.vercel.app/`]) {
-    await assert.rejects(fetchProtectedPreview(configuration, target, { fetcher }), /Protected preview transport failed/);
+  for (const settings of [configuration, oidcConfiguration]) {
+    for (const target of ["https://other.example/", "https://other-preview.vercel.app/", "not a URL", `https://person@controlled-afterhours-preview.vercel.app/`]) {
+      await assert.rejects(fetchProtectedPreview(settings, target, { fetcher }), /Protected preview transport failed/);
+    }
   }
   assert.equal(calls, 0);
   const result = await fetchProtectedPreview(configuration, origin, { fetcher });
@@ -66,9 +116,11 @@ test("protected transport rejects other origins without fetch and never follows 
 });
 
 test("protected transport failures never expose fetch exceptions or synthetic authorization", async () => {
-  await assert.rejects(fetchProtectedPreview(configuration, origin, {
-    fetcher: async () => { throw new Error(`untrusted exception ${secret}`); },
-  }), (error: unknown) => error instanceof Error && error.message === "Protected preview transport failed. Check the target and authorized Preview access." && !error.message.includes(secret));
+  for (const settings of [configuration, oidcConfiguration]) {
+    await assert.rejects(fetchProtectedPreview(settings, origin, {
+      fetcher: async () => { throw new Error(`untrusted exception ${settings.secret}`); },
+    }), (error: unknown) => error instanceof Error && error.message === "Protected preview transport failed. Check the target and authorized Preview access." && !error.message.includes(settings.secret));
+  }
 });
 
 test("regression context blocks unmocked provider routes before any protected request", async () => {

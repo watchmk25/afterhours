@@ -1,13 +1,19 @@
 import type { BrowserContext } from "@playwright/test";
 
-export type ProtectedPreview = { origin: string; secret: string };
+type PreviewAuthenticationHeader = "x-vercel-protection-bypass" | "x-vercel-trusted-oidc-idp-token";
+export type ProtectedPreview = { origin: string; secret: string; headerName?: PreviewAuthenticationHeader };
 type TransportResponse = { status: number; headers: Record<string, string>; body: Buffer };
 const maximumResponseBytes = 8 * 1024 * 1024;
 const safeFailure = "Protected preview transport failed. Check the target and authorized Preview access.";
 
 /** Process-only configuration: never copy this object into Playwright use/config. */
 export function protectedPreview(environment: Record<string, string | undefined> = process.env): ProtectedPreview | undefined {
-  const secret = environment.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const bypassSecret = environment.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const oidcToken = environment.PLAYWRIGHT_VERCEL_OIDC_TOKEN;
+  if (bypassSecret !== undefined && oidcToken !== undefined) {
+    throw new Error("Protected Preview access requires exactly one process-only authorization method.");
+  }
+  const secret = oidcToken ?? bypassSecret;
   if (secret === undefined) return undefined;
   let target: URL;
   try { target = new URL(environment.PLAYWRIGHT_BASE_URL ?? ""); }
@@ -17,7 +23,8 @@ export function protectedPreview(environment: Record<string, string | undefined>
     !secret.trim() || secret.length > 4096 || /[\u0000-\u001f\u007f]/u.test(secret)) {
     throw new Error("Protected Preview access requires an explicit HTTPS vercel.app origin and a valid process-only secret.");
   }
-  return { origin: target.origin, secret };
+  return { origin: target.origin, secret,
+    ...(oidcToken === undefined ? {} : { headerName: "x-vercel-trusted-oidc-idp-token" as const }) };
 }
 
 function redactedBytes(body: Buffer, secret: string): Buffer {
@@ -56,7 +63,7 @@ export async function fetchProtectedPreview(configuration: ProtectedPreview, tar
       }
       if (allowed.has(name.toLowerCase())) headers.set(name, value);
     }
-    headers.set("x-vercel-protection-bypass", configuration.secret);
+    headers.set(configuration.headerName ?? "x-vercel-protection-bypass", configuration.secret);
     const response = await (options.fetcher ?? fetch)(url, {
       method: options.method ?? "GET", headers,
       ...(options.body ? { body: Uint8Array.from(options.body) } : {}),
@@ -77,7 +84,7 @@ export async function fetchProtectedPreview(configuration: ProtectedPreview, tar
       } finally { reader.releaseLock(); }
     }
     const returnedHeaders: Record<string, string> = {};
-    const withheld = new Set(["set-cookie", "content-encoding", "content-length", "x-vercel-protection-bypass", "authorization"]);
+    const withheld = new Set(["set-cookie", "content-encoding", "content-length", "x-vercel-protection-bypass", "x-vercel-trusted-oidc-idp-token", "authorization"]);
     response.headers.forEach((value, name) => {
       if (!withheld.has(name.toLowerCase()) && !value.includes(configuration.secret) && !value.includes(encodeURIComponent(configuration.secret))) returnedHeaders[name] = value;
     });

@@ -61,8 +61,16 @@ Production, Development, or other Preview deployments.
 
 An explicitly supplied `PLAYWRIGHT_BASE_URL` disables the local web server.
 Default local/anonymous behavior remains available. For protected access, the
-test runner accepts a **process-only** `VERCEL_AUTOMATION_BYPASS_SECRET` and an
-explicit HTTPS Vercel origin. Authorization is added inside Node fetch for that
+test runner accepts a **process-only** `PLAYWRIGHT_VERCEL_OIDC_TOKEN` and an
+explicit HTTPS Vercel origin. A trusted Node wrapper privately captures
+`project token afterhours --scope sam-3b2d --json` from pinned Vercel CLI 64.5.0;
+its stdout is a credential and must never be printed or persisted. The same
+project's development identity can reach its own Preview using the existing
+Trusted Sources default. No trust rules, static bypasses, environment settings,
+or production access are added. The transport sends the identity in
+`x-vercel-trusted-oidc-idp-token` internally. Existing process-only
+`VERCEL_AUTOMATION_BYPASS_SECRET` access remains supported; specifying both
+methods is rejected. Authorization is added inside Node fetch for that
 exact origin only, with manual redirects, a bounded response/deadline, fixed
 safe errors, and no retries. Secret headers, cookies, encoding metadata, and any
 echoed secret bytes are withheld before fulfilling the browser response.
@@ -77,21 +85,104 @@ server's existing three-model/one-ranking maximum. No standalone probe or retry
 is authorized. Capture stage/render timings, actual proposal/coverage, edited
 outline preservation, and explicit Apply; stop on failure without a substitute.
 
-A temporary time-limited shareable access secret may be created for **this exact
-deployment URL only** using Vercel's URL protection-bypass API, held in memory,
-passed through child environment, and revoked after verification. Do not create
-project-wide automation access, disable protection, or revoke an unrelated
-shareable link. Verify unauthenticated access remains blocked and the production
-deployment/environment metadata remain unchanged.
+The first authorized hosted suite passed 46 checks; its CSV download check
+reached Vercel SSO because Chromium's native download escaped ordinary request
+routing. The trace showed no CSV route fulfillment. For protected targets only,
+that test now validates the exact existing CSV link, fetches the **real hosted
+file** through Node with HTTP 200 required, and transfers those bytes to a
+temporary browser Blob URL on the existing anchor. The click, download event,
+filename, downloaded-file/header, and subsequent BOM/quoted import assertions
+remain intact. The link is restored and Blob revoked afterward. Local testing
+keeps the original native path. This transport adaptation does not verify the
+separate hosted cookie-authenticated native-download path, and does not change
+application code or substitute a sample CSV.
+
+The first setup guard stopped at HTTP 302 to `vercel.com/sso-api`, before any
+access creation or provider request; that exact redirect is now recognized as
+anonymous protection. A subsequent URL-scoped shareable access attempt failed
+the authorized workspace preflight and was revoked before browser journeys or
+provider calls. It is not used as an automation credential. The same-project
+OIDC access check then returned **HTTP 200** with the actual AfterHours title and
+workspace section markers. The OIDC credential stays in process memory and child
+environment only, is discarded afterward, and expires automatically. Verify
+unauthenticated access remains blocked and production deployment/environment
+metadata remain unchanged. No project-wide automation bypass is created.
+
+## Deployed Preview
+
+The protected Preview is
+[afterhours-1mnhg6i1r-sam-3b2d.vercel.app](https://afterhours-1mnhg6i1r-sam-3b2d.vercel.app),
+deployment `dpl_J1PCLKqDQApctdtSg4RGzKiK8DdQ`, source commit
+`e92b2f9fd711c5a9483003e99f09944867b8418c`. Vercel reported **READY** and
+the expected `feat/event-agent` source metadata. Later test-access and results
+documentation changes do not change the deployed application code.
+Opening the plain URL requires authorized Vercel project access; no credential
+or shareable access parameter is included in this link.
+
+After the OIDC test-access correction, lint, explicit TypeScript, all **218 Node
+tests** (eight protected-transport checks), and production build passed.
+Neither application prompts, provider settings, nor dependencies changed.
+
+## Hosted verification — 2026-10-21
+
+All **47 Chromium regression tests passed against this protected Preview**,
+using one worker, zero retries, controlled provider fixtures, and no live
+provider requests. They cover the workspace, CSV import, confirmed Qloo
+interests and ranking, event previews/revisions, cancellation/stale responses,
+edit preservation, explicit Apply, keyboard interaction, and 390px layouts.
+The protected CSV download uses the actual hosted bytes through the transport
+adaptation described above. The eight offline transport tests additionally
+cover exact-origin authorization, Origin preservation, manual redirects,
+redaction, fixed errors, and unmocked-provider blocking.
+
+After that suite passed, a fresh browser context performed **exactly one real
+generation** through the hosted UI, using Example A (Amélie + Norah Jones),
+INR 450, 400 pages, all three sample languages, and a 45-minute interactive
+request. No standalone probe, revision, fallback, or retry was made. The
+application returned HTTP 200 with **two Gemini requests and one Qloo ranking**.
+
+| Observed stage | Duration |
+| --- | ---: |
+| Loading feedback visible | 278 ms after Generate |
+| First Gemini request | 735 ms |
+| Fresh Qloo ranking | 79 ms |
+| Second Gemini request | 1,912 ms |
+| Proposal validation | 5 ms |
+| Application response | 4,194 ms after Generate |
+| Valid proposal rendered | **4,246 ms after Generate** |
+
+The validated proposal selected **The Namesake by Jhumpa Lahiri**, at illustrative
+INR 450, with **3 of 6 eligible books assessed**. Its four agenda blocks were
+5 + 20 + 10 + 10 = **45 minutes**. Current-run evidence contained the returned
+affinity and contributions for the two confirmed interests; these are not
+probabilities or a verified literary explanation. The existing selected Guide,
+edited title, and organizer notes remained unchanged before Apply. An explicit
+**Apply proposal** then selected The Namesake and populated the proposal's
+title, materials, and invitation. Desktop and 390px screenshots were inspected;
+the mobile document and body measured 390px with no horizontal overflow, and
+the book cards, proposal, and outline fields remained readable.
+
+This one hosted result was below the 10–15-second target. It does not establish
+a stable latency distribution or explain the previous local 26.928-second run.
+The prompt and output budget were unchanged. Sanitized evidence is retained
+locally in ignored files:
+
+- `artifacts/playwright/event-agent-hosted-results.json`: actual proposal,
+  coverage, timings, request counts, edit/Apply and overflow assertions.
+- `artifacts/playwright/event-agent-hosted-applied-desktop.png` and
+  `event-agent-hosted-applied-mobile-390.png`: actual applied hosted proposal.
+- `artifacts/playwright/release-hosted-regressions.log`,
+  `playwright-report/index.html`, and `test-results/results.json`: passing suite.
+- `artifacts/playwright/release-preview-oidc-verification.json`: plain URL
+  remains protected (HTTP 302 to Vercel SSO); production deployment, project
+  environment variables, and protection unchanged; no project-wide bypass.
+
+The short-lived OIDC identity was removed from the child environment afterward
+and is not saved. Only the deployment's server-side runtime holds the Qloo and
+Gemini credentials. Test-access and documentation changes after the deployed
+source commit do not change its application runtime.
 
 ## Before anonymous public release
-
-Local release-preparation checks passed: lint, TypeScript, all **216 Node
-tests** (including six protected-transport tests), and production build. The
-transport tests use synthetic authorization only and cover exact-origin
-scoping, Origin preservation, manual redirects, redaction, fixed errors, and
-unmocked-provider blocking. These checks make zero live provider calls. Hosted
-regressions and the single real hosted turn are recorded after deployment.
 
 Current bounds protect individual invocations; they do **not** impose shared
 quotas, aggregate spending limits, or concurrency limits across requests or
@@ -116,5 +207,6 @@ sustained latency, recommendation quality, quota availability, or public reliabi
 
 Sources: [Vercel function limits](https://vercel.com/docs/functions/limitations),
 [CLI deploy/runtime variables](https://vercel.com/docs/cli/deploy),
+[Trusted Sources](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/trusted-sources),
 [URL-scoped protection access](https://vercel.com/docs/rest-api/aliases/update-the-protection-bypass-for-a-url),
 [shareable link limits](https://vercel.com/docs/deployment-protection/methods-to-bypass-deployment-protection/sharable-links).

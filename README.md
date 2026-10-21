@@ -6,6 +6,8 @@ A local organizer workspace for independent bookstores and book clubs. Start wit
 
 **The complete live event-planning journey passed with `gemini-3.5-flash-lite`: generate at INR 450, freshly rank and revise at INR 300, preview, and explicitly Apply.** Valid proposals rendered in **26.928 seconds** and **14.558 seconds** respectively: only the revision met the 10–15-second target. Limits are now 20 seconds per Gemini request and 30 seconds per run. These two successful turns establish local live acceptance, not sustained public reliability. See [actual traces, timings, and limitations](docs/event-agent.md).
 
+**Protected hosted preview verified:** all 47 Chromium regressions passed with controlled fixtures and zero live calls. One subsequent real INR 450, 45-minute generation rendered in **4.246 seconds**, assessed 3 of 6 eligible books, preserved edits before Apply, and explicitly applied The Namesake. It used two Gemini requests and one Qloo ranking. The preview requires authorized Vercel access; production remains unchanged. See the [preview URL, measured stages, screenshots, and release limitations](docs/hosted-preview.md).
+
 ## Run locally
 
 Use Node.js 24 LTS (the built-in TypeScript test runner requires a recent Node version) and npm:
@@ -182,19 +184,23 @@ CLI deployments use the tracked `.vercelignore` to exclude actual environment fi
 - `test-results/<qloo-mobile-test-name>/qloo-ranked-workspace-mobile-390.png`: controlled matching, eligible shelf, and edited outline at 390px.
 - `artifacts/playwright/qloo-live-desktop.png` and `qloo-live-mobile-390.png`: locally retained screenshots from the three-request live verification; no credentials or headers are captured.
 - `artifacts/playwright/event-agent-responsive-a-desktop.png`, `event-agent-responsive-b-desktop.png`, and `event-agent-responsive-mobile-390.png`: actual Flash Lite previews, explicit Apply, and the applied outline at 390px. `event-agent-responsive-results.json` records sanitized stage/render timings and request totals.
+- `artifacts/playwright/event-agent-hosted-applied-desktop.png` and `event-agent-hosted-applied-mobile-390.png`: the actual protected hosted proposal after explicit Apply. `event-agent-hosted-results.json` retains its sanitized timings, coverage, proposal, and request counts.
 - `test-results/<failed-test-name>/test-failed-1.png` and `trace.zip`: retained failure screenshot and trace. Inspect traces with `npx playwright show-trace <path-to-trace.zip>`.
 - `artifacts/playwright/`: retained screenshots and the original failure trace from the visual review during this setup.
 
 Generated reports and artifacts are ignored by Git and ESLint. Playwright replaces `test-results/` and `playwright-report/` on subsequent runs; copy a run's artifacts elsewhere before rerunning when you need to retain its history. Browser installation and launch can require local permission for downloads, browser processes, and test workers.
 
-For an access-protected Vercel Preview, the runner also accepts process-only
-`VERCEL_AUTOMATION_BYPASS_SECRET` with an explicit HTTPS `PLAYWRIGHT_BASE_URL`.
-Obtain authorized access through secure provider tooling; do not paste its value
+For an access-protected Vercel Preview, the runner accepts a process-only
+`PLAYWRIGHT_VERCEL_OIDC_TOKEN` with an explicit HTTPS `PLAYWRIGHT_BASE_URL`.
+A trusted wrapper can capture a short-lived same-project identity through the
+authenticated Vercel CLI. Existing automation-bypass access is also supported
+through `VERCEL_AUTOMATION_BYPASS_SECRET`; supplying both is rejected. Obtain
+authorized access through secure provider tooling; do not paste its value
 into commands, source, or reports. The test transport adds authorization inside
 Node fetch only for that exact Preview origin. It never adds secret headers to
 Playwright configuration, browser requests, cookies, URLs, or traces. Existing
 page fixtures intercept provider actions; an additional context guard blocks
-unmocked provider routes. Omitting the secret preserves the anonymous/local
+unmocked provider routes. Omitting authorization preserves the anonymous/local
 preflight. This authorized mode verifies protected functionality, not anonymous
 visitor access. See [the release record](docs/hosted-preview.md).
 
