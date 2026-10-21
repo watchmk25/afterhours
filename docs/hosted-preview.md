@@ -4,7 +4,8 @@ The current branch adds shared usage reservations, leases, and rolling Gemini
 pacing. See [the pacing verification record](gemini-pacing.md) for the current
 local/Redis results and hosted verification status. The successful hosted
 generation and Preview URLs below are historical; they do not verify the new
-shared controls. Vercel CLI connectivity is currently blocking a new Preview.
+shared controls. Vercel account/project reads now succeed, but the deployment
+dry run still fails with `TypeError: fetch failed`, blocking a new Preview.
 
 For the subsequent audience-setup, applied-context, cancellation, and duration
 corrections with zero live calls, see the [audience-to-event verification record](audience-event-journey.md).
