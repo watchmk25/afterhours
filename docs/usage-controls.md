@@ -2,7 +2,7 @@
 
 This preparation adds a server-only admission layer for AfterHours' eventual anonymous demo. It covers `POST /api/qloo/search`, `POST /api/qloo/rank`, and `POST /api/event-agent`, including generation and revision. No application account is required. Browsing, local CSV processing, eligibility filters, fixed templates, existing drafts, and explicit Apply remain available independently of Redis and provider access.
 
-**Real-store verification: UNVERIFIED.** The current environment has no Upstash REST credentials; no database was provisioned for this task. The missing-configuration diagnostic makes **0 Redis requests, 0 Qloo requests, and 0 Gemini requests**. All routine verification uses controlled offline fixtures; this task makes no live Qloo/Gemini requests. Prior successful provider runs remain historical evidence, not verification of these controls.
+**Latest real-store verification: PASS.** After the organizer saved the REST credentials, one bounded Redis-only invocation completed **6 Redis requests**, all HTTP 200, with confirmed temporary-key cleanup. It made **0 Qloo requests and 0 Gemini requests**. The existing local visitor secret was preserved and live application actions remain explicitly disabled. No database was provisioned or reconfigured; hosting/provider configuration and production counters were unchanged. Account/Free-plan settings and trusted hosting are separate unverified release items.
 
 ## Configuration and operator switch
 
@@ -98,7 +98,7 @@ The diagnostic now records only fixed stage/outcome names, elapsed milliseconds,
 
 `cleanupAcknowledged` means the exact-key delete returned a valid result. `cleanupConfirmed` is more conservative: a prior transport failure or timeout can leave an unresolved write that may complete after deletion on another connection, so acknowledgment alone cannot confirm absence of late writes. Such a result remains UNVERIFIED with the TTL limitation; the check makes no extra probe or retry to resolve that uncertainty.
 
-### Configuration verification follow-up — 2026-10-21
+### Initial configuration verification follow-up — 2026-10-21
 
 The saved ignored `.env.local` and effective process configuration were inspected without displaying values. Required `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` assignments were both **missing**, with no inherited overrides. Their format/authentication therefore could not be verified. The absent visitor secret was generated cryptographically and saved directly to `.env.local` without printing it. Its parsed value is present and valid. `AFTERHOURS_LIVE_ENABLED=false` is explicit in both local and effective configuration. Existing Qloo/Gemini settings were preserved; no Vercel runtime flag or trusted header was fabricated.
 
@@ -114,9 +114,28 @@ The requested `npm run usage` command was invoked **once** after offline checks.
 | Qloo / Gemini requests | **0 / 0**. |
 | Production counters | Untouched. |
 
-No further live/store attempt was made after this configuration failure. Save the account-owned Free database's REST URL/token under those exact names in ignored server configuration before requesting a new bounded check. Keep the live switch false. Account ownership, Free-plan/eviction settings, real Redis behavior, and trusted hosting remain unverified.
+That attempt stopped after the configuration failure. At that checkpoint, saving the REST URL/token was required before a new bounded check, and real Redis behavior remained unverified. The organizer subsequently confirmed saving both variables, authorizing the separate follow-up recorded below. No automatic retry occurred; the live switch stayed false.
 
 For the diagnostic-only code changes, full lint and explicit TypeScript checks passed. **34 focused offline tests passed**, including eight new manual-check tests: actual admission Lua and isolated cleanup, missing/invalid configuration, first HTTP failure retention, swallowed release failure, malformed responses, fetch/body deadlines and cleanup uncertainty, cleanup failure preventing PASS, and fake-secret-safe output. Runtime application code, dependencies, and provider deadlines did not change. The full application/build/Chromium suites were not repeated; their earlier results below remain historical. The local environment file remains ignored and untracked.
+
+### Saved-credential Redis verification — 2026-10-21
+
+Starting at `8daaebf99b3c51cac5cfa8f72c0c0342e62ef476`, the saved local and effective configuration both contained a valid-format REST URL/token and a valid visitor secret, with no inherited override. Only presence/format flags were displayed. The existing visitor secret and all credentials/settings were preserved; this continuation made no environment-file edits. `AFTERHOURS_LIVE_ENABLED=false` remained explicit locally and effectively. No Vercel runtime flag or trusted header was fabricated.
+
+`npm run usage` was invoked once after the organizer's save confirmation. It exited successfully with `realStore: PASS`, `cleanupAcknowledged: true`, and `cleanupConfirmed: true`:
+
+| Stage | HTTP status | Elapsed | Outcome |
+| --- | --- | --- | --- |
+| First admission | 200 | 522 ms | Completed. |
+| Second admission | 200 | 290 ms | Completed. |
+| Shared concurrency denial | 200 | 221 ms | Third admission correctly denied by shared state. |
+| Own lease release | 200 | 218 ms | Completed. |
+| Admission after release | 200 | 220 ms | Completed. |
+| Temporary-key cleanup | 200 | 219 ms | Exact isolated temporary keys deleted; cleanup confirmed. |
+
+Actual totals for this invocation: **6 Redis requests of the maximum 8; 0 Qloo requests; 0 Gemini requests**. No timeout fired, failure was observed, or automatic retry occurred. The earlier missing-credential invocation made zero Redis requests, so both configuration attempts together still total six real Redis requests. Only the diagnostic's isolated temporary namespace was used; production counters were untouched. Credentials, URLs, headers, Redis contents, namespace identifiers, and raw errors were not printed or retained in this record.
+
+This verifies authentication and the actual Redis operations used for shared admission, concurrency denial, own-lease release, admission after release, and temporary-key cleanup on the configured store. It does not establish sustained availability, failover behavior, all real-time expiry/budget boundaries, account ownership, Free-plan/eviction settings, trusted hosted visitor identity, or provider access. Live application actions remain disabled. No code/dependency changes were needed; this follow-up changes documentation only, so the prior passing offline checks were reused and the full application suite was not repeated. `.env.local` remains ignored/untracked; main, production, Preview protection, and repository privacy remain unchanged.
 
 ## Offline checks and release boundaries
 
@@ -124,7 +143,7 @@ Focused tests cover shared state across independent instances, simultaneous admi
 
 The test-only pinned Wasmoon 1.16.0 dependency runs the actual production admission/release Lua against fake Redis command state, with network forbidden. It uses a bundled local WebAssembly VM and is never imported by the application. Wasmoon's Lua 5.4 execution of this common Lua 5.1 subset checks script logic; it does not establish Upstash command compatibility, real-store atomicity, failover behavior, or latency. [Wasmoon](https://github.com/ceifa/wasmoon), [Redis Lua API](https://redis.io/docs/latest/develop/programmability/lua-api/)
 
-Verified locally on 2026-10-21:
+Initial implementation verification on 2026-10-21 (before the saved-credential check above):
 
 | Check | Actual result |
 | --- | --- |
@@ -138,8 +157,8 @@ Verified locally on 2026-10-21:
 
 The actual search/rank/event handler tests use isolated synthetic environments and intercepted fetch. They verify rejection before provider dispatch, configuration/validation skips before Redis, conservative reservations, cleanup after a controlled provider failure, and honest unknown counts after in-flight cancellation. The production browser server had provider keys disabled and provider egress blocked. Browser fixtures exercise limit/busy/store-unavailable/operator-paused states, explicit keyboard retries, preserved selection and all edited outline fields, retained applied evidence, disabled stale Apply, and manual editing at 390px. The full-page 390px capture was visually inspected; its controls, error message, cards, and applied context remain readable without horizontal overflow.
 
-Generated artifacts are ignored: `playwright-report/index.html`, `test-results/results.json`, and `test-results/usage-controls-denied-revi-22be6-s-and-readable-390px-states-chromium/usage-denied-applied-event-mobile-390.png`. The earlier ignored hosted-verification helper was adjusted locally to reject unknown usage rather than assuming zero; no raw capture or helper is committed. All verification in this task sent **0 live Qloo requests, 0 live Gemini requests, and 0 real Redis requests**. No hosted preview was deployed or reverified for this change.
+Generated artifacts are ignored: `playwright-report/index.html`, `test-results/results.json`, and `test-results/usage-controls-denied-revi-22be6-s-and-readable-390px-states-chromium/usage-denied-applied-event-mobile-390.png`. The earlier ignored hosted-verification helper was adjusted locally to reject unknown usage rather than assuming zero; no raw capture or helper is committed. That initial implementation verification sent **0 live Qloo requests, 0 live Gemini requests, and 0 real Redis requests**; the later real-store check is recorded separately above. No hosted preview was deployed or reverified for these usage-control changes.
 
-Real Redis remains UNVERIFIED until credentials are supplied and the bounded check succeeds. Upstash documents persistence, but Free lacks paid-tier extra redundancy and its consistency documentation describes replication/failure limitations. Operator changes, store loss, clock discontinuity, identity rotation, and distributed failure can weaken an absolute cap; provider-side hard quotas and monitoring remain necessary. [Durable storage](https://upstash.com/docs/redis/features/durability), [Consistency](https://upstash.com/docs/redis/features/consistency)
+The bounded real-store check now passes; trusted-host integration and sustained behavior remain unverified. Upstash documents persistence, but Free lacks paid-tier extra redundancy and its consistency documentation describes replication/failure limitations. Operator changes, store loss, clock discontinuity, identity rotation, and distributed failure can weaken an absolute cap; provider-side hard quotas and monitoring remain necessary. [Durable storage](https://upstash.com/docs/redis/features/durability), [Consistency](https://upstash.com/docs/redis/features/consistency)
 
-Before anonymous release, verify the actual account/Free plan/disabled eviction, real store, Vercel header trust, configured server-only environment, and operator pause procedure. Confirm provider credential quotas, expiry, access, and cost limits with their issuers. Add appropriate hosting traffic protection and monitoring: even rejected traffic consumes Redis requests and can exhaust the Free store's allowance. Keep Preview protection enabled until a separately authorized public-release decision; this preparation does not merge or deploy to production.
+Before anonymous release, confirm the actual account/Free plan/disabled eviction and verify hosted store configuration, Vercel header trust, and the operator pause procedure. Confirm provider credential quotas, expiry, access, and cost limits with their issuers. Add appropriate hosting traffic protection and monitoring: even rejected traffic consumes Redis requests and can exhaust the Free store's allowance. Keep Preview protection enabled until a separately authorized public-release decision; this preparation does not merge or deploy to production.
