@@ -6,6 +6,10 @@ local/Redis results and hosted verification status. The successful hosted
 generation and Preview URLs below are historical; they do not verify the new
 shared controls. Vercel account/project reads now succeed, but the deployment
 dry run still fails with `TypeError: fetch failed`, blocking a new Preview.
+The organizer reproduced that failure in their own terminal. The
+[Git-based dashboard handoff](git-preview-deployment.md) now records the
+alternative path, required Preview settings, and original test/request budgets.
+It does not claim a new deployment or hosted verification.
 
 For the subsequent audience-setup, applied-context, cancellation, and duration
 corrections with zero live calls, see the [audience-to-event verification record](audience-event-journey.md).

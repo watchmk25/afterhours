@@ -110,3 +110,15 @@ Account-owned Free-plan and disabled-eviction settings remain **UNVERIFIED**. Th
 At this follow-up, feature commit `93b7ba0bd87318c141c7aada94452c56bdee443b` matches its remote. PR #3 is still open, draft, and reports `MERGEABLE` / `CLEAN`; the repository remains private. Only verification documentation changed after that checkpoint, so its passing lint, TypeScript, 289 Node tests, build, and 56 local Chromium checks are reused. The successful nine-request Redis diagnostic was not repeated; this follow-up made **zero Redis, Qloo, or Gemini requests**.
 
 Remaining verification is authorized protected-host integration and its pause check once CLI connectivity works. Existing successful local/hosted proposals remain historical evidence, not a live test of the new shared pacing gate. One successful store or hosted check would not establish sustained availability or public reliability.
+
+## Git-based dashboard handoff
+
+The organizer subsequently reproduced the deployment dry-run `fetch failed`
+in their own PowerShell. The [protected Git Preview runbook](git-preview-deployment.md)
+records the existing project, pushed source, seven required Preview-only
+settings, dashboard steps, and unchanged remaining request budget. The CLI
+environment-add path timed out and the documented bulk API write also failed;
+configuration must be confirmed in the dashboard rather than inferred from
+those attempts. No new Git link, deployment, Redis check, or live provider call
+was made. The current application checks and nine-request Redis PASS are
+reused; this handoff changes documentation only.

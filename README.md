@@ -10,6 +10,8 @@ A local organizer workspace for independent bookstores and book clubs. Start wit
 
 **Shared Gemini pacing now allows at most 12 request reservations in a rolling 60-second window across application instances.** Every initial, continuation, and repair request must pass this check. The new Redis-only check **passed with nine HTTP 200 responses and confirmed cleanup**, with zero live Qloo/Gemini calls; **56 local Chromium regressions passed** with controlled fixtures. Hosted verification remains **UNVERIFIED**: Vercel CLI connection timeouts block a new protected Preview. Live actions remain disabled. See [pacing behavior and current results](docs/gemini-pacing.md) and [shared controls](docs/usage-controls.md). No database was provisioned or billing enabled.
 
+The organizer confirmed the CLI deployment dry run also fails in their own PowerShell. Use the [Git-based protected Preview dashboard handoff](docs/git-preview-deployment.md) for the existing project, exact source selection, seven Preview-only server settings, and preserved verification budgets. No Git connection or new deployment is claimed by that preparation.
+
 ## Run locally
 
 Use Node.js 24 LTS (the built-in TypeScript test runner requires a recent Node version) and npm:
