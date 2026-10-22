@@ -1,5 +1,12 @@
 # Git-based protected Preview handoff
 
+Feature work is now frozen for submission. See the [release-readiness record](release-readiness.md)
+and [Devpost draft](devpost-submission.md). The current dashboard inventory has
+no enabled browser or app target (`apps: []`, `browsers: []`); no failed CLI
+deployment/environment-write attempt is repeated. Deploy the final pushed
+feature commit reported with the release handoff, while keeping live work off
+until controlled hosted checks pass. The live budget below remains unused.
+
 The organizer confirmed that CLI 64.5.0 `deploy --dry --json --target preview`
 also fails in their own PowerShell with `TypeError: fetch failed`. Use Vercel's
 Git/dashboard deployment path instead of repeating that upload attempt.
