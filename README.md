@@ -4,7 +4,7 @@
 
 Independent bookstores and book clubs need to choose books they can stock, afford, and finish, then turn that choice into an event. AfterHours brings audience setup, inventory filtering, cultural-taste matching, and an editable event outline into one organizer workspace.
 
-**Try it locally without credentials:** browse samples, import a CSV, filter eligible books, and edit a fixed event template. The updated live demo is awaiting protected hosted verification; there is no verified public live-agent URL for this release. Production is unchanged. See the [release review](docs/public-release-review.md) and [protected Preview handoff](docs/git-preview-deployment.md) for current access and deployment state.
+**Try it locally without credentials:** browse samples, import a CSV, filter eligible books, and edit a fixed event template. The protected release from `8892db2` passed all 56 controlled hosted browser checks and one real generation with explicit Apply: 2 Gemini requests, 1 Qloo ranking, and a valid proposal rendered in 5.028 seconds. A fresh protected Preview was verified paused afterward; there is no verified public live-agent URL for this release. The organizer also redeployed Production while retaining the old main source. See the [current hosted acceptance record](docs/hosted-acceptance.md), [release review](docs/public-release-review.md) and [protected Preview handoff](docs/git-preview-deployment.md).
 
 ## The organizer journey
 

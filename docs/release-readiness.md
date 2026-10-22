@@ -1,5 +1,22 @@
 # Frozen release readiness — 22 October 2026
 
+**Current hosted follow-up:** see [the acceptance record](hosted-acceptance.md).
+Hotspot connectivity restored the secure workflow. Vercel metadata confirms
+Ready protected Preview `8892db2`, Git connected and all seven branch-scoped
+Preview settings. The actual pause check passed (`LIVE_DISABLED`, usage 0/0),
+and all **56 controlled hosted Chromium tests passed in 2.4 minutes**, with zero
+live provider/store calls. The single live attempt then **passed** on a fresh
+enabled Preview of the same source: **2 Gemini / 1 Qloo**, valid 45-minute
+Namesake proposal rendered in **5.028 seconds**, edits preserved until explicit
+Apply. A fresh paused Preview then passed with zero additional provider/store
+dispatches. The organizer deleted the exact temporary enabled Preview; a
+complete authenticated deployment list corroborated its absence and the final
+paused Preview's Ready state. The earlier CLI deletion timeout was not retried.
+The organizer redeployed Production from old main
+`574ca8c`: its deployment changed, source unchanged; the replacement ID is now
+verified in the acceptance record. Earlier inventories and IDs below are
+historical. No Git push is permitted while the Preview switch is true.
+
 Feature development is frozen. This task changes release documentation and the
 project license only. Application code, inventory, mappings, prompts, models,
 dependencies, deadlines, credentials, and shared usage policies are preserved.
@@ -24,9 +41,9 @@ repository are preparation stages, not the final submission.
 | Source/history review | See [scope, results, and limitations](public-release-review.md). No history rewrite or credential rotation is authorized or performed. |
 | Product/setup documentation | Product-first README, committed lockfile and required assets, empty server-only configuration example, local setup and check commands. Detailed chronology remains in linked records. |
 | Submission text | [Devpost draft](devpost-submission.md) prepared; final demo/source/release/team fields remain explicitly pending. Nothing has been submitted to Devpost. |
-| Current protected hosted release | **UNVERIFIED**. No new deployment URL or displayed source SHA exists for this task. |
-| Current hosted live generation / Apply / timings | **UNVERIFIED**; not attempted. Exact task totals: **0 Gemini, 0 Qloo, 0 Redis requests**. |
-| Hosted pause | **UNVERIFIED**. Local switch remains false; that does not establish the state of a historical deployment. |
+| Current protected hosted release | Verified application source `8892db227839b0cc7f35e0846bca75cdc7058973`: initial pause, all 56 controlled hosted checks and one real generation **PASS**. Final protected paused Preview is `afterhours-25xbnm1pa-sam-3b2d.vercel.app`; the temporary enabled Preview has been removed. |
+| Current hosted live generation / Apply / timings | **PASS**: one real generation, **2 Gemini / 1 Qloo**, current-run evidence for **3 of 6 eligible books**, exact 45-minute agenda, valid preview in **5.028 seconds**, preserved edits and explicit Apply. Final pause and temporary enabled-deployment cleanup completed. |
+| Hosted pause | **PASS initially and after live acceptance**: fresh final `afterhours-25xbnm1pa-sam-3b2d.vercel.app`, same source `8892db2`, HTTP 503 `LIVE_DISABLED`, zero Gemini/Qloo usage and pre-store rejection. Anonymous requests still redirect to SSO. |
 | Public demo / source | **Not released**. Historical production is not the current live-agent release. |
 
 GitHub confirmed `watchmk25/afterhours` is private, the current user has ADMIN
@@ -64,6 +81,10 @@ books, and both A/B ranking records remain consistent. Those 15 ledger entries
 are historical; this verification made **zero new requests**.
 
 ## Dashboard blocker and single handoff
+
+The following is the earlier pre-deployment handoff, retained as history. Its
+missing-Git/variable inventory and blockers are superseded by the current
+[successful protected acceptance record](hosted-acceptance.md).
 
 The available computer/browser inventory returned **`apps: []`, `browsers: []`**.
 There is no enabled dashboard target to control in this session. No browser
@@ -104,6 +125,10 @@ Use the existing [Git Preview handoff](git-preview-deployment.md):
 
 ## Acceptance after the protected Preview is available
 
+This bounded sequence has now completed against source `8892db2`, including
+final pause and cleanup. The original one-generation budget is spent. The
+runbook below does not authorize another live attempt.
+
 1. Run the existing controlled hosted Chromium suite first, with **zero live
    provider calls**, using the documented secure Node-only protection transport.
    Record deployed SHA and reports; do not infer anonymous access from it.
@@ -127,7 +152,7 @@ Use the existing [Git Preview handoff](git-preview-deployment.md):
 These are future actions requiring the separate release decision. No visibility
 or protection change is made here.
 
-1. Resolve the protected-host acceptance and pause gates above. Review the
+1. Retain the completed protected acceptance and pause evidence above. Review the
    source/history findings, commit-author metadata disclosure, asset/provider
    rights, existing dependency findings, store ownership/Free/eviction settings,
    issuer quotas, and operator monitoring. Do not imply shared limits establish

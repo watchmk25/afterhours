@@ -1,8 +1,9 @@
 # AfterHours — Devpost submission draft
 
-Prepared on **22 October 2026** from `feat/event-agent`, source checkpoint
-`d0739cbf40150d1ebf1051b09cf99eddf193b055`. This is a local writing and
-release-readiness draft, not a submitted entry or evidence of a new deployment.
+Prepared on **22 October 2026** from `feat/event-agent`; hosted acceptance was
+subsequently completed against application source
+`8892db227839b0cc7f35e0846bca75cdc7058973` as recorded below. This is a local
+writing and release-readiness draft, not a submitted entry or public release.
 Keep the repository **private**, PR #3 **draft**, and the Preview **protected**
 until the organizer separately authorizes release.
 
@@ -42,11 +43,15 @@ the demo available for judging. [Official rules](https://qloo.devpost.com/rules)
 
 The existing public production site, `https://afterhours-umber.vercel.app`, runs
 historical source `574ca8cc0070caefd99ee52743cad3b2bbe45ba4`; it is not the
-current agent release. The latest recorded protected Preview is
-`https://afterhours-6p14f62rq-sam-3b2d.vercel.app`, historical application source
-`7e88b81174371ab66dcd989340e5ee34026f6b35`. It does not establish hosted
-acceptance of the newer usage controls or Gemini pacing. Neither URL should
-silently fill the public-agent-demo placeholder.
+current agent release. The organizer redeployed Production while retaining that
+old main source; this acceptance work made no further Production changes. The
+latest verified protected, paused Preview is
+`https://afterhours-25xbnm1pa-sam-3b2d.vercel.app`, application source
+`8892db227839b0cc7f35e0846bca75cdc7058973`. The same source passed 56 controlled
+hosted browser checks and one real proposal/Apply journey before pause was
+restored. Its protected, paused state is not a public live-agent demo. Neither
+URL should silently fill the public-agent-demo placeholder. See the
+[current hosted acceptance record](hosted-acceptance.md).
 
 ## Project description draft
 
@@ -138,8 +143,10 @@ leases, and a rolling 12-request / 60-second Gemini pacing gate across instances
 using the same store and namespace. Store failure rejects live work. An
 operator switch defaults off. These controls are conservative application
 reservations, not billing measurements, a monetary cap, verified user identity,
-or complete abuse prevention. Trusted hosted identity and current hosted live
-acceptance still require verification.
+or complete abuse prevention. Hosted admission and both per-request pacing
+operations passed during one real protected run using Vercel's actual visitor
+identity path. This verifies that run through the Node test transport, not
+per-person identity, cross-instance load behavior or sustained public reliability.
 
 ### Challenges and what we learned
 
@@ -205,16 +212,18 @@ request budget after release.
 | Real native agent proposals and explicit Apply | Historical local INR 450→300 journey passed with fresh ranking per turn; valid renders took **26.928 s / 14.558 s**. This predates current shared controls. [Event-agent record](event-agent.md) |
 | Real hosted proposal | Historical protected deployment generated and explicitly applied The Namesake in **4.246 s**, using **two Gemini requests / one Qloo ranking**, with 3/6 eligible books assessed. This is one earlier turn, not current pacing acceptance or a latency guarantee. [Hosted record](hosted-preview.md) |
 | Later audience/context UI on a protected host | Historical **51 controlled Chromium tests** passed against source `7e88b81…`; zero live provider calls. [Audience/context record](audience-event-journey.md) |
-| Current shared-control/pacing hosted release | **UNVERIFIED.** Deployment transport failed; no current hosted controlled suite, real generation, or hosted operator-pause verification has completed. [Current blocker](gemini-pacing.md), [dashboard handoff](git-preview-deployment.md) |
+| Current shared-control/pacing hosted release | **PASS for bounded protected acceptance** at source `8892db2`: actual initial/final paused responses, **56 controlled hosted Chromium checks**, and one real generation with **2 Gemini requests / 1 Qloo ranking**. The Namesake proposal assessed **3/6** eligible books, totaled **45 minutes**, rendered in **5.028 s**, preserved edits until explicit Apply, and applied successfully. A fresh protected Preview was verified paused afterward; temporary enabled-deployment cleanup confirmation is recorded separately. This is not an anonymous release or latency guarantee. [Current acceptance](hosted-acceptance.md) |
 | Taste-effect and coverage evidence | Same ranking, changed scores/contributions; no quality claim. One later detail batch left mappings unresolved and coverage unchanged. [Feasibility](qloo-feasibility.md), [coverage review](qloo-coverage-review.md) |
 | Anonymous access to the current agent / public source / final submission | **UNVERIFIED / not released.** Repository remains private and Preview protected. This document does not publish or submit them. |
 
 ## Final submission gates
 
-- Complete the existing protected dashboard deployment handoff, then verify the
-  current source, controlled hosted regressions, one authorized bounded live
-  journey, actual timings, explicit Apply, and the hosted pause switch. Do not
-  infer these from historical results or repeat the successful Redis diagnostic.
+- Retain the current protected acceptance evidence and verified paused Preview.
+  The task-created enabled deployment was deleted through the dashboard and its
+  absence corroborated by the complete project deployment list. The
+  one-generation allowance has been spent; additional
+  live testing requires a renewed request budget. Do not repeat the successful
+  Redis diagnostic or mistake this bounded acceptance for a public release.
 - Confirm the account-owned store's Free plan and disabled eviction in its
   management console, and review current provider quotas, retention and
   monitoring. Shared reservations do not establish a spending cap.

@@ -1,5 +1,35 @@
 # Git-based protected Preview handoff
 
+## Current follow-up — 22 October 2026
+
+The organizer completed the Git/dashboard setup and reports a Ready protected
+Preview from `8892db227839b0cc7f35e0846bca75cdc7058973` at
+<https://afterhours-otv2z3euy-sam-3b2d.vercel.app>, with all seven settings scoped
+to Preview → feat/event-agent. Production was also redeployed by the organizer
+from old main `574ca8c`; its deployment changed while the source stayed old main.
+The old Production ID and missing-Git/variable observations below are historical.
+
+See [current acceptance evidence and the precise resume steps](hosted-acceptance.md).
+The initial transport timeouts were resolved by switching to a phone hotspot.
+Authenticated metadata and secure test authorization now succeed. Actual pause
+passed with HTTP 503 `LIVE_DISABLED` and usage 0/0; all 56 controlled hosted
+Chromium checks passed in 2.4 minutes with zero live provider/store calls. The
+single authorized live generation then passed on a fresh protected enabled
+Preview of the same source: **2 Gemini / 1 Qloo**, valid Namesake proposal in
+**5.028 seconds**, exact 45-minute agenda and explicit Apply with prior edits
+preserved until Apply. The organizer restored the scoped switch to false and
+created the final protected Preview at
+<https://afterhours-25xbnm1pa-sam-3b2d.vercel.app>, same source. Its real paused
+response passed with zero additional provider/store dispatches. The organizer
+deleted only enabled deployment `dpl_G3Q8QUSfaFfLAcLUp68ffqBJamuK`; the complete
+authenticated project deployment list corroborated its absence and the final
+paused Preview's Ready state. The CLI deletion command had timed out and was
+not retried. Protection and Production remain unchanged. The live allowance is
+spent; no additional provider request is authorized. Documentation can now be
+committed and pushed with the switch false.
+
+## Earlier preparation record
+
 Feature work is now frozen for submission. See the [release-readiness record](release-readiness.md)
 and [Devpost draft](devpost-submission.md). The current dashboard inventory has
 no enabled browser or app target (`apps: []`, `browsers: []`); no failed CLI
@@ -109,6 +139,10 @@ production-branch updates. Do not push/merge main or create unrelated deployment
 triggers during this handoff.
 
 ## Verification and remaining live budget
+
+The original allowance below has now been spent by the one successful live
+generation in the current acceptance record. This historical plan is not a
+renewed request budget.
 
 Application code is unchanged by this handoff. Reuse the passing lint,
 TypeScript, **289 Node tests**, production build, and **56 local production
