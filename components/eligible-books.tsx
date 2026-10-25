@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { Book } from "@/lib/types";
+import type { QlooRanking } from "@/lib/qloo-types";
 import { Icon } from "./icons";
 
 const rupees = new Intl.NumberFormat("en-IN", {
@@ -14,6 +15,7 @@ export function EligibleBooks({
   source,
   selectedId,
   invalid,
+  ranking,
   onSelect,
   onResetFilters,
 }: {
@@ -22,6 +24,7 @@ export function EligibleBooks({
   source: "sample" | "imported";
   selectedId: string | null;
   invalid: boolean;
+  ranking: QlooRanking | null;
   onSelect: (id: string) => void;
   onResetFilters: () => void;
 }) {
@@ -81,6 +84,7 @@ export function EligibleBooks({
                       <span aria-hidden="true">·</span>
                       <span>{book.pages} pages</span>
                     </p>
+                    {ranking && <p className="book-assessment">{ranking.ranked.some((item) => item.localId === book.id) ? "Assessed by Qloo" : "Not assessed by Qloo"}</p>}
                   </div>
                 </div>
                 <div className="book-card-footer">

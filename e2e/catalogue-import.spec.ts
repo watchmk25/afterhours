@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures";
 import { createDefaultInputs, LANGUAGES } from "../lib/workspace";
+import { fetchProtectedPreview, protectedPreview } from "./support/protected-preview";
 
 const header = "title,author,price_inr,pages,language,stock";
 const simpleCsv = `${header}\nAurora Reading Room,Ananya Rao,240,180,Tamil,4\nEvening Windows,Claire Martin,180,120,French,2\n`;
@@ -42,6 +43,7 @@ async function prepareGuideDraft(page: Page) {
   await shelf(page).getByRole("button", { name: "Select: The Guide", exact: true }).click();
   await page.getByLabel("Event title", { exact: true }).fill("Preserve my Guide event");
   await page.getByLabel("Organizer notes", { exact: true }).fill("Keep this carefully edited room plan.");
+  await page.getByText("Optional audience notes", { exact: true }).click();
   await page.getByLabel("Books", { exact: true }).fill("A favourite that must remain");
 }
 
@@ -103,15 +105,48 @@ test("valid inventory is previewed atomically and uses stock, price, page, and l
 });
 
 test("downloadable template has the required columns and quoted BOM/CRLF fields retain their text", async ({ page }) => {
-  const downloadEvent = page.waitForEvent("download");
-  await page.getByRole("link", { name: "Download CSV template", exact: true }).click();
-  const download = await downloadEvent;
-  expect(download.suggestedFilename()).toMatch(/\.csv$/i);
-  const downloadedPath = await download.path();
-  expect(downloadedPath).not.toBeNull();
-  if (!downloadedPath) throw new Error("CSV template was not downloaded");
-  const downloadedCsv = await readFile(downloadedPath, "utf8");
-  expect(downloadedCsv.replace(/^\uFEFF/, "").split(/\r?\n/)[0]).toBe(header);
+  const link = page.getByRole("link", { name: "Download CSV template", exact: true });
+  const protection = protectedPreview();
+  let blobDownload: { url: string; href: string | null; download: string | null } | undefined;
+  if (protection) {
+    const href = await link.getAttribute("href");
+    expect(href).not.toBeNull();
+    const target = new URL(href!, page.url());
+    expect(target.origin).toBe(protection.origin);
+    expect(target.pathname).toBe("/catalogue-template.csv");
+    expect(target.search).toBe("");
+    expect(target.hash).toBe("");
+    const response = await fetchProtectedPreview(protection, target.href);
+    expect(response.status, "The actual hosted CSV template must be available through authorized Node transport").toBe(200);
+    // Chromium native downloads escape ordinary request routing. Transfer the
+    // actual hosted bytes through a Blob; authorization stays entirely in Node.
+    blobDownload = await link.evaluate((anchor, input) => {
+      const original = { href: anchor.getAttribute("href"), download: anchor.getAttribute("download") };
+      const url = URL.createObjectURL(new Blob([Uint8Array.from(input.bytes)], { type: "text/csv;charset=utf-8" }));
+      anchor.setAttribute("href", url);
+      anchor.setAttribute("download", input.filename);
+      return { url, ...original };
+    }, { bytes: [...response.body], filename: target.pathname.slice(1) });
+  }
+  try {
+    const downloadEvent = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download CSV template", exact: true }).click();
+    const download = await downloadEvent;
+    expect(download.suggestedFilename()).toMatch(/\.csv$/i);
+    const downloadedPath = await download.path();
+    expect(downloadedPath).not.toBeNull();
+    if (!downloadedPath) throw new Error("CSV template was not downloaded");
+    const downloadedCsv = await readFile(downloadedPath, "utf8");
+    expect(downloadedCsv.replace(/^\uFEFF/, "").split(/\r?\n/)[0]).toBe(header);
+  } finally {
+    if (blobDownload) await link.evaluate((anchor, original) => {
+      for (const attribute of ["href", "download"] as const) {
+        if (original[attribute] === null) anchor.removeAttribute(attribute);
+        else anchor.setAttribute(attribute, original[attribute]);
+      }
+      URL.revokeObjectURL(original.url);
+    }, blobDownload);
+  }
 
   const title = 'Letters, Places & "People"';
   const author = 'Leela "L." Sen';
@@ -183,6 +218,7 @@ test("dynamic catalogue languages work and Reset retains imported inventory with
   await expect(shelf(page).getByRole("heading", { level: 3 })).toHaveText(["Evening Windows"]);
   await shelf(page).getByRole("button", { name: "Select: Evening Windows", exact: true }).click();
   await page.getByLabel("Organizer notes", { exact: true }).fill("Discard these imported-book notes on Reset.");
+  await page.getByText("Optional audience notes", { exact: true }).click();
   await page.getByLabel("Books", { exact: true }).fill("A temporary favourite");
   await page.getByLabel("Films", { exact: true }).fill("A temporary film");
   await page.getByLabel("Musicians", { exact: true }).fill("A temporary musician");
@@ -205,6 +241,7 @@ test("dynamic catalogue languages work and Reset retains imported inventory with
 
 test("Restore sample catalogue clears imported selection but retains favourites and numeric limits", async ({ page }) => {
   await importCsv(page);
+  await page.getByText("Optional audience notes", { exact: true }).click();
   await page.getByLabel("Books", { exact: true }).fill("Keep the audience taste");
   await page.getByLabel("Max price per copy", { exact: true }).fill("450");
   await page.getByLabel("Max page count", { exact: true }).fill("300");

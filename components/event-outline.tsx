@@ -1,29 +1,40 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { Book } from "@/lib/types";
+import type { Book, FilterInputs } from "@/lib/types";
+import type { EventProposal } from "@/lib/event-types";
 
 type OutlineDraft = {
   title: string;
   agenda: string;
   prompts: string;
   notes: string;
+  materials: string;
+  invitation: string;
 };
 
-function createTemplate(book: Book | null): OutlineDraft {
+function createTemplate(book: Book | null, proposal: EventProposal | null): OutlineDraft {
   return {
-    title: book ? `An evening with ${book.title}` : "",
-    agenda:
+    title: proposal?.eventTitle ?? (book ? `An evening with ${book.title}` : ""),
+    agenda: proposal ? proposal.agenda.map((item) => `${item.title} — ${item.minutes} minutes\n${item.activity}`).join("\n\n") :
       "Welcome and check-in — 10 minutes\nBook discussion — 40 minutes\nPersonal reflections — 15 minutes\nNext gathering and close — 10 minutes",
     prompts:
       "1. Which passage or moment stayed with you, and why?\n2. What question would you like to ask the group?\n3. Did your perspective change as you read?",
     notes: "",
+    materials: proposal?.materials.join("\n") ?? "",
+    invitation: proposal?.invitation ?? "",
   };
 }
 
-export function EventOutline({ book }: { book: Book | null }) {
+export function EventOutline({ book, proposal = null, appliedFilters = null, previousInputs = false }: {
+  book: Book | null;
+  proposal?: EventProposal | null;
+  appliedFilters?: FilterInputs | null;
+  previousInputs?: boolean;
+}) {
   const fieldId = useId();
-  const [draft, setDraft] = useState(() => createTemplate(book));
+  const applied = proposal?.selectedBookId === book?.id ? proposal : null;
+  const [draft, setDraft] = useState(() => createTemplate(book, applied));
 
   function updateField(field: keyof OutlineDraft, value: string) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -40,7 +51,7 @@ export function EventOutline({ book }: { book: Book | null }) {
           <p className="eyebrow">03 / MAKE A PLAN</p>
           <h2 id="outline-title">Event outline</h2>
         </div>
-        <span className="badge">Fixed template · not AI-generated</span>
+        <span className="badge">{applied ? "Gemini proposal · editable" : "Fixed template · not AI-generated"}</span>
       </div>
 
       {book ? (
@@ -53,7 +64,34 @@ export function EventOutline({ book }: { book: Book | null }) {
 
           <p className="quiet outline-session-note">
             Edits stay in this session. Switching books starts a fresh template.
+            {applied ? " Applying another proposal replaces this draft." : ""}
           </p>
+
+          {applied && appliedFilters && <section className="applied-event-context" aria-label="Applied event context">
+            <h4>Applied event context</h4>
+            {previousInputs && <p className="qloo-notice" role="status">
+              <strong>Based on previous inputs.</strong> Your confirmed audience or filters changed after Apply. Your edits are kept.
+              {" "}<a href="#event-planner">Generate a current proposal</a> to review a replacement; nothing changes until you apply it.
+            </p>}
+            <p className="quiet applied-interests"><strong>Confirmed interests used:</strong>{" "}
+              {applied.interests.map((interest) => `${interest.name}${interest.disambiguation ? ` (${interest.disambiguation})` : ""} — ${interest.kind === "movie" ? "film" : "musician"}`).join("; ")}
+            </p>
+            <p className="qloo-coverage">Qloo assessed {applied.coverage.assessedCount} of {applied.coverage.eligibleCount} eligible books; {applied.coverage.supportedCount} had reviewed mappings.</p>
+            <details className="applied-evidence">
+              <summary>Applied filters and numerical evidence</summary>
+              <p><strong>Filter snapshot:</strong> Maximum ₹{appliedFilters.maxPrice} per copy · Maximum {appliedFilters.maxPages} pages · Languages: {appliedFilters.languages.join(", ")} · In stock only</p>
+              <p><strong>Planned duration:</strong> {applied.duration} minutes. Editing the running order does not revalidate its total.</p>
+              <ul aria-label="Applied Qloo evidence">
+                {applied.evidence.map((item) => <li key={item.id}>
+                  {item.kind === "affinity" ? "Qloo affinity" : `Input contribution: ${item.interestName ?? "confirmed interest"}`}: {item.value}
+                  {" "}<span className="quiet">(reference <code>{item.id}</code>)</span>
+                </li>)}
+              </ul>
+              <p className="quiet">These are the numerical values supplied with the applied proposal, not probabilities or guarantees of individual preferences. No ranking position is inferred.</p>
+              <h4>Warnings from the applied proposal</h4>
+              {applied.warnings.length > 0 ? <ul className="applied-warnings">{applied.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul> : <p className="quiet">No warnings were supplied.</p>}
+            </details>
+          </section>}
 
           <div className="outline-grid">
             <div className="field outline-full-width">
@@ -73,7 +111,7 @@ export function EventOutline({ book }: { book: Book | null }) {
                 Running order
               </label>
               <p className="quiet outline-field-hint" id={`${fieldId}-timings`}>
-                75-minute starting point. Edit the timings to suit your gathering.
+                {applied ? `${applied.duration}-minute proposal.` : "75-minute starting point."} Edit the timings to suit your gathering.
               </p>
               <textarea
                 className="textarea"
@@ -90,7 +128,7 @@ export function EventOutline({ book }: { book: Book | null }) {
                 Discussion prompts
               </label>
               <p className="quiet outline-field-hint">
-                A few open questions to get the conversation started.
+                {applied ? "Optional generic prompts to use alongside the proposed activities." : "A few open questions to get the conversation started."}
               </p>
               <textarea
                 className="textarea"
@@ -100,6 +138,17 @@ export function EventOutline({ book }: { book: Book | null }) {
                 onChange={(event) => updateField("prompts", event.target.value)}
               />
             </div>
+
+            {applied && <>
+              <div className="field">
+                <label className="field-label" htmlFor={`${fieldId}-materials`}>Materials</label>
+                <textarea className="textarea" id={`${fieldId}-materials`} rows={5} value={draft.materials} onChange={(event) => updateField("materials", event.target.value)} />
+              </div>
+              <div className="field">
+                <label className="field-label" htmlFor={`${fieldId}-invitation`}>Invitation</label>
+                <textarea className="textarea" id={`${fieldId}-invitation`} rows={5} value={draft.invitation} onChange={(event) => updateField("invitation", event.target.value)} />
+              </div>
+            </>}
 
             <div className="field outline-full-width">
               <label className="field-label" htmlFor={`${fieldId}-notes`}>
