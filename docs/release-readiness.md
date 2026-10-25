@@ -1,4 +1,34 @@
-# Frozen release readiness — 22 October 2026
+# Release readiness
+
+## Public release — 25 October 2026
+
+**Public-release follow-up — 25 October 2026:** explicit publication is now
+authorized. PR #3 was already merged at
+`e9b5505de388efdd24a333822fc55c845e49af02`; local main was synchronized safely,
+with no tree difference from accepted checkpoint `c553f28`. The repository is
+now public, anonymous GitHub access passes and GitHub detects MIT on main.
+Production now serves the live app anonymously. A confirmed keyboard/anchor
+scrolling issue in the first suite was fixed by removing one global smooth-scroll
+property at `06cf158ccd930abfc1f3924ec34649ebd7b15a6d`; no provider logic changed.
+Lint, TypeScript, 289 Node tests, production build and all **56 anonymous hosted
+checks** passed. The one actual public generation used **2 Gemini / 1 Qloo**,
+rendered a validated 45-minute Namesake proposal in **3.652 seconds**, preserved
+edits until explicit Apply and applied successfully. Production remains enabled
+for judges; local/Preview remain paused and Preview protected.
+See [the current public-release record](public-release.md).
+Older private/draft/main-release gates below describe the earlier phase and
+are superseded by this authorization. Preview must remain protected and paused.
+
+| Current release gate | Actual state |
+| --- | --- |
+| Public source / main license | Repository public; anonymous access passes and GitHub detects MIT. Project original code is MIT; dependency/provider terms remain applicable. |
+| Application release source | `06cf158ccd930abfc1f3924ec34649ebd7b15a6d`, after the minimal keyboard-scroll fix; final documentation checkpoints are separate. |
+| Public demo | <https://afterhours-umber.vercel.app> — actual anonymous browser and live proposal/Apply passed. |
+| Verification | Lint, explicit TypeScript, 289 Node tests, production build and all 56 unchanged anonymous hosted journeys pass. One public live generation: 2 Gemini / 1 Qloo, 3/6 coverage, exact 45-minute agenda, 3.652-second valid render. |
+| Operator state | Production enabled for judges; local and protected Preview paused, shared budgets/pacing preserved. |
+| Submission material | Actual URLs/source/license/results filled in the Devpost draft. Unknown team/entrant details remain explicit; final Devpost submission is the organizer's action. |
+
+## Historical protected release — 22 October 2026
 
 **Current hosted follow-up:** see [the acceptance record](hosted-acceptance.md).
 Hotspot connectivity restored the secure workflow. Vercel metadata confirms
@@ -30,7 +60,7 @@ overview excludes private-access-only demos; a protected Preview and private
 repository are preparation stages, not the final submission.
 [Overview](https://qloo.devpost.com/), [rules](https://qloo.devpost.com/rules).
 
-## Current gates
+### Current gates
 
 | Gate | Actual state |
 | --- | --- |
@@ -52,7 +82,7 @@ reported PR #3 `MERGEABLE` / `CLEAN`, with no status-check rollup at the initial
 release review. Recheck after the final push; mergeability does not replace
 release verification or authorize merging.
 
-## Verification reused and performed
+### Verification reused and performed
 
 Unchanged application code reuses the recorded PASS for lint, explicit
 TypeScript, production build, **289 Node tests**, and **56 local production
@@ -80,7 +110,7 @@ fetch disabled: the existing 15-request historical ledger, four eligible mapped
 books, and both A/B ranking records remain consistent. Those 15 ledger entries
 are historical; this verification made **zero new requests**.
 
-## Dashboard blocker and single handoff
+### Dashboard blocker and single handoff
 
 The following is the earlier pre-deployment handoff, retained as history. Its
 missing-Git/variable inventory and blockers are superseded by the current
@@ -123,7 +153,7 @@ Use the existing [Git Preview handoff](git-preview-deployment.md):
    handoff. Verify its displayed SHA, branch, environment, Ready status, protected
    access, and unchanged production source. Share only URL and source SHA.
 
-## Acceptance after the protected Preview is available
+### Acceptance after the protected Preview is available
 
 This bounded sequence has now completed against source `8892db2`, including
 final pause and cleanup. The original one-generation budget is spent. The
@@ -147,7 +177,7 @@ runbook below does not authorize another live attempt.
    a settings change alone does not pause them. Leave the protected Preview
    paused and main/production unchanged.
 
-## Remaining public-release steps after review
+### Remaining public-release steps after review
 
 These are future actions requiring the separate release decision. No visibility
 or protection change is made here.

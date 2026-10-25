@@ -1,6 +1,52 @@
 # Public release review
 
-Reviewed on 2026-10-22. This records preparation for a future public release; it does not authorize changing repository visibility or publishing a deployment.
+## Current publication follow-up — 25 October 2026
+
+The organizer explicitly authorized public source visibility, Production
+publication and one bounded anonymous live verification. PR #3 is already
+merged at `e9b5505de388efdd24a333822fc55c845e49af02`; its tree is identical to
+accepted checkpoint `c553f28`, with no new application changes. The repository
+is now public: anonymous GitHub API access returned HTTP 200 with
+`private: false` and MIT detection. Raw main LICENSE returned HTTP 200 with the
+existing copyright attribution. The merged Production page returned anonymous
+HTTP 200. Its initial controlled suite passed 54 tests and exposed two keyboard
+scrolling failures; focused planner controls stayed outside the viewport during
+the 10-second expectation. Replaying the same two journeys and assertions with
+only a CSS auto-scroll override passed both in 22.135 seconds, with zero provider
+calls. Commit `06cf158ccd930abfc1f3924ec34649ebd7b15a6d` removes only the global
+`html` smooth-scroll property, retaining its 25px scroll padding. No provider
+logic, mappings, validations, architecture or dependency changed. Lint, explicit
+TypeScript, all 289 Node tests and production build passed after the correction.
+The full anonymous hosted rerun then passed **56/56 original journeys in
+119,848 ms (2.0 minutes)** on the actual deployed fix, with no CSS override,
+changed assertions, skipped/flaky/unexpected results or live provider calls.
+Production deployment `dpl_3PJSrNDF9fzR2aRDcsCRXMXAuD6s` was Ready from source
+`06cf158…` during that paused check. Fresh enabled Production deployment
+`dpl_7Si49UQpNXgy5Uii1wMNionQjoVC` then passed exactly one anonymous UI
+generation at that source: an empty initial cookie store, page and generation
+HTTP 200, actual **2 Gemini requests / 1 Qloo ranking**, and no probes, retries,
+revisions or replacement attempt. The valid Namesake proposal assessed **3/6**
+eligible books, totaled **45 minutes**, rendered in **3.652 seconds** and applied
+explicitly after preserving the Guide edits. Mobile document/body widths were
+390px without horizontal overflow. Production stays enabled for judges after
+success; local and protected Preview live switches remain false. Documentation
+checkpoints after this run are separate from tested application source
+`06cf158ccd930abfc1f3924ec34649ebd7b15a6d`. See
+[the public-release record](public-release.md). This successful bounded journey
+does not establish sustained performance, recommendation quality or public
+reliability.
+
+The existing MIT license covers the project's original code. Third-party,
+dependency and provider terms remain applicable; public redistribution rights
+for saved provider material are not certified by this review. Existing author
+metadata is published without rewriting history. No new concrete credential
+leak was identified requiring rotation. The older private/draft hold statements
+below describe the historical preparation stage and are superseded by the
+current explicit authorization; they do not require another general approval.
+
+## Historical review — 22 October 2026
+
+This historical review records the original preparation scope and findings.
 
 ## Scope and method
 
@@ -37,7 +83,7 @@ All 32 reachable commits name **Mousam Kumar** as author. Repository-local autho
 
 The author's personal email is present in the metadata of all 32 reachable commits. Making the repository public would expose that existing metadata. This review has not rewritten history, changed author settings, or repeated the address in documentation.
 
-The release preparation adds a canonical MIT `LICENSE` with `Copyright (c) 2026 Mousam Kumar`. The latest separately inspected GitHub metadata still reports the repository as private, owner `watchmk25`, and administrative access. GitHub's default-branch `licenseInfo` is currently null because the new license has not yet reached the default branch; license detection remains to be checked after a future reviewed merge. No visibility change is part of this preparation.
+The release preparation added a canonical MIT `LICENSE` with `Copyright (c) 2026 Mousam Kumar`. At the 22 October review, GitHub metadata reported the repository as private, owner `watchmk25`, and administrative access; default-branch `licenseInfo` was null before the merge. The 25 October publication and MIT detection are recorded above.
 
 ## Assets, dependencies, and saved provider material
 
@@ -51,7 +97,7 @@ The release preparation adds a canonical MIT `LICENSE` with `Copyright (c) 2026 
 - This review covers objects reachable through the refs present locally at the baseline. It does not inspect deleted/unreachable objects, reflogs, GitHub issues or PR discussions, external caches, deployment logs, or every provider/dashboard record.
 - Pattern matching and direct comparison with current local credentials can miss unknown, rotated, encoded, split, or binary-embedded secrets. No credentials were validated by contacting their services.
 - The separate dashboard browser attempt exposed no controllable applications or browsers (`apps: []`, `browsers: []`). Provider/dashboard state requiring that access remains unverified; this review did not bypass that blocker.
-- Before a future public release, the owner must decide whether the existing author-email exposure is acceptable and confirm rights to publish the saved provider material. Repository visibility and any live deployment must remain unchanged until that release is explicitly authorized.
+- The 22 October review identified author-email exposure and rights to publish saved provider material as owner release decisions. Publication is now explicitly authorized; these historical review limits are retained rather than presented as an additional approval gate.
 
 No confirmed leak was found requiring rotation or history rewriting. The unresolved provider-redistribution question and the deliberate publication of author metadata remain explicit release decisions.
 
