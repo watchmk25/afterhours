@@ -45,7 +45,7 @@ the demo available for judging. [Official rules](https://qloo.devpost.com/rules)
 | Public demo URL | <https://afterhours-umber.vercel.app> — anonymous access, all 56 controlled hosted browser checks and one real anonymous proposal/Apply journey **PASS** on source `06cf158…`. Production is enabled for judges, subject to shared limits. |
 | Public source URL | <https://github.com/watchmk25/afterhours> — anonymous repository API access verified, `private: false`, GitHub license detection **MIT**; raw main LICENSE returned HTTP 200. |
 | Submitted source commit / release tag | Verified application source: `06cf158ccd930abfc1f3924ec34649ebd7b15a6d` (minimal keyboard/anchor-scrolling correction after merged `e9b5505…`). Anonymous controlled and live verification passed. No release tag is claimed; record later documentation-only checkpoints separately. |
-| Team / entrant and roles | **TODO — organizer-confirmed names, roles, and Devpost profiles.** |
+| Team / entrant and roles | **Solo entry — confirmed by the entrant.** Role: project creator. Use the entrant's own Devpost profile as the only team member. |
 | Optional video URL | **TODO if recorded; not required.** |
 | Screenshots | Select current readable desktop and 390px captures; label controlled fixtures and historical live results accurately. |
 
