@@ -307,3 +307,84 @@ svg { flex-shrink: 0; }
   .qloo-ranked-heading .button { width: 100%; }
   .qloo-interest-list > li { align-items: flex-start; }
 }
+
+/* Adaptive club planner: one workflow, with the original warm AfterHours palette. */
+.club-shell { padding-bottom: 24px; }
+.club-shell .workspace-intro { align-items: flex-end; }
+.club-layout { display: grid; grid-template-columns: minmax(300px, 0.75fr) minmax(0, 1.55fr); gap: 26px; align-items: start; }
+.club-inputs, .club-main-column { display: grid; gap: 24px; min-width: 0; }
+.club-section { padding: 26px; min-width: 0; overflow-wrap: anywhere; scroll-margin-top: 24px; }
+.club-section h2 { margin-bottom: 18px; }
+.club-section h3 { margin: 16px 0 8px; font-size: 16px; }
+.club-section .field { margin-top: 16px; }
+.club-section input:not([type=checkbox]):not([type=file]), .club-section textarea, .club-section select { width: 100%; min-width: 0; border: 1px solid #cdd3c6; border-radius: 5px; background: #fffef9; padding: 10px 11px; color: var(--foreground); line-height: 1.5; }
+.club-section textarea { resize: vertical; }
+.club-section button:disabled { opacity: .55; }
+.club-two-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.club-route-buttons { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 18px 0; }
+.club-details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 15px; }
+.club-details > summary { cursor: pointer; font-weight: 600; font-size: 13px; line-height: 1.6; padding: 3px 0; }
+.club-details-body { padding: 12px 0 2px; min-width: 0; }
+.club-details-body p + p { margin-top: 8px; }
+.club-interest-picker { position: relative; }
+.club-picker-menu { background: #fffef9; border: 1px solid #c8d2c1; border-radius: 6px; padding: 10px; margin-top: 7px; box-shadow: 0 6px 16px #203b2910; max-height: 420px; overflow-y: auto; }
+.club-picker-label { font-size: 11px; font-weight: 600; color: var(--muted); padding: 2px 5px 8px; }
+.club-picker-option { width: 100%; border: 0; border-radius: 5px; background: transparent; padding: 9px 5px; display: flex; gap: 11px; align-items: center; text-align: left; color: var(--foreground); }
+.club-picker-option:hover, .club-picker-option[aria-selected=true] { background: #eaf0e3; }
+.club-thumbnail { width: 48px; height: 60px; background: #e9eadf; flex: 0 0 48px; overflow: hidden; border-radius: 4px; display: grid; place-items: center; }
+.club-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.club-thumbnail-fallback { font-family: Georgia, serif; font-size: 23px; color: #65805c; text-align: center; line-height: 1.05; }
+.club-thumbnail-fallback small { display: block; font-family: Arial, sans-serif; font-size: 8px; margin-top: 4px; letter-spacing: .2px; }
+.club-entity-copy { min-width: 0; flex: 1; display: block; }
+.club-entity-copy strong { display: inline; font-size: 13px; }
+.club-entity-copy small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
+.club-type { display: inline-block; font-size: 9px; text-transform: uppercase; letter-spacing: .7px; color: #506648; background: #edf0e5; border: 1px solid #d8dfcf; padding: 2px 5px; border-radius: 3px; margin-left: 7px; vertical-align: middle; }
+.club-search-status { min-height: 19px; margin-top: 6px; }
+.club-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; list-style: none; margin: 14px 0; }
+.club-chips li { background: #e8eedf; border: 1px solid #d0ddc6; padding: 6px 8px 6px 10px; border-radius: 6px; display: flex; align-items: center; gap: 7px; min-width: 0; max-width: 100%; }
+.club-chips small { display: block; font-size: 10px; color: var(--muted); }
+.club-chips strong { font-size: 12px; }
+.club-chips button { border: 0; background: transparent; padding: 0 5px; min-height: 30px; min-width: 30px; color: #426037; font-size: 22px; flex-shrink: 0; }
+.club-source-note, .club-notice { margin-top: 16px; padding: 14px 15px; border: 1px solid #d8dfcd; border-radius: 6px; background: #f0f1e4; font-size: 12px; }
+.club-source-note a { text-decoration: underline; font-weight: 600; }
+.club-selection { display: flex; gap: 12px; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); margin-top: 18px; padding: 10px 0 17px; }
+.club-resource-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.club-resource, .club-candidate { border: 1px solid var(--line); background: #fbfbf4; border-radius: 7px; padding: 17px; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.club-resource > strong { font-family: Georgia, serif; font-size: 18px; line-height: 1.3; font-weight: 400; }
+.club-resource .button, .club-candidate .button { margin-top: auto; }
+.club-resource > .club-type { margin-left: 0; }
+.club-candidate-selected { border-color: #678a5d; box-shadow: 0 0 0 1px #678a5d; }
+.club-entity-line { display: flex; align-items: center; gap: 12px; min-width: 0; width: 100%; }
+.club-constraints { padding-left: 16px; font-size: 11px; margin: 8px 0; }
+.club-constraints li { margin-bottom: 7px; }
+.club-assessment { font-size: 9px; text-transform: uppercase; font-weight: 600; }
+.club-assessment-needs_confirmation { color: #886323; }
+.club-assessment-violated { color: #9b3d2a; }
+.club-assessment-satisfied { color: #3f6c36; }
+.club-discovery-actions { border-top: 1px solid var(--line); padding-top: 20px; margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.club-discovery-actions p { flex: 1 1 180px; }
+.club-discovery { margin-top: 24px; }
+.club-error { margin-top: 16px; border: 1px solid #e2c2b3; border-radius: 5px; padding: 13px; font-size: 12px; color: #873d2c; background: #fcf0e9; }
+.club-live-status { margin-top: 15px; font-size: 12px; color: #47683d; }
+.club-resolution-rows { max-height: 440px; overflow-y: auto; margin: 16px 0; border: 1px solid var(--line); border-radius: 5px; }
+.club-resolution-row { padding: 14px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.club-resolution-row:last-child { border-bottom: 0; }
+.club-resolution-choice { display: block; width: 100%; text-align: left; background: #f3f5e9; color: var(--foreground); border: 1px solid #cfdac3; border-radius: 5px; padding: 10px; margin-top: 8px; }
+.club-resolution-choice small, .club-resolution-choice > span:last-child { display: block; font-size: 11px; margin-top: 5px; }
+.club-language-fields { border: 0; margin: 15px 0 0; padding: 0; }
+.club-language-fields legend { font-size: 12px; font-weight: 600; margin-bottom: 7px; }
+.club-language-fields label { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; margin: 0 14px 6px 0; }
+.club-proposal { margin-top: 24px; padding: 20px; border: 1px solid #acc09f; border-radius: 8px; background: #f5f7eb; }
+.club-proposal h4 { font-family: Georgia, serif; font-size: 24px; line-height: 1.3; font-weight: 400; margin: 14px 0; }
+.club-agenda-preview { padding-left: 20px; }
+.club-agenda-preview li { padding: 6px 0; font-size: 12px; }
+.club-acknowledgment { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; margin: 20px 0; }
+.club-acknowledgment input { margin-top: 5px; flex-shrink: 0; }
+.club-proposal > .button { margin-top: 15px; }
+.club-agenda-entry { border-top: 1px solid var(--line); margin-top: 15px; padding: 0 0 12px; }
+.club-evidence { font-size: 12px; }
+.club-evidence ul { padding-left: 20px; }
+.club-section input[type=checkbox] { accent-color: var(--green); min-width: 16px; min-height: 16px; }
+@media (max-width: 1000px) { .club-layout { grid-template-columns: minmax(270px, .9fr) minmax(0, 1.1fr); gap: 20px; } .club-section { padding: 20px; } .club-resource-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .club-layout { grid-template-columns: minmax(0, 1fr); } .club-shell .workspace-intro { align-items: flex-start; } .club-inputs, .club-main-column { gap: 20px; } .club-section { padding: 22px; } .club-resource-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .club-section { padding: 20px 17px; } .club-resource-grid { grid-template-columns: minmax(0, 1fr); } .club-selection { flex-wrap: wrap; } .club-two-fields { gap: 10px; } .club-proposal { padding: 16px; } .club-resource, .club-candidate { padding: 17px; } .club-route-buttons { gap: 9px; } .club-shell .workspace-actions { flex-wrap: wrap; } .club-shell .workspace-nav { gap: 14px; } .club-shell .header-inner { gap: 20px; } }

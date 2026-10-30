@@ -1,5 +1,5 @@
-import { OrganizerWorkspace } from "@/components/organizer-workspace";
+import { ClubWorkspace } from "@/components/club-workspace";
 
 export default function Home() {
-  return <OrganizerWorkspace />;
+  return <ClubWorkspace />;
 }

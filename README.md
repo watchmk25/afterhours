@@ -1,37 +1,33 @@
 # AfterHours
 
-**Choose an eligible book using audience film and music tastes, then plan an event you can edit.**
+**Describe your club and its tastes; find a cultural focus and turn it into a practical gathering.**
 
-Independent bookstores and book clubs need to choose books they can stock, afford, and finish, then turn that choice into an event. AfterHours brings audience setup, inventory filtering, cultural-taste matching, and an editable event outline into one organizer workspace.
+AfterHours is for organizers of reading circles, music societies, film groups, student associations and other clubs. Describe the people and goal in your own words, confirm representative cultural interests, discover a book, artist, movie or place, and review an editable event plan before explicitly applying it.
 
-**Try the [public demo](https://afterhours-umber.vercel.app):** confirm Example A, set practical limits, and explicitly generate a proposal for review before Apply. Tested application source `06cf158ccd930abfc1f3924ec34649ebd7b15a6d` passed all 56 controlled anonymous hosted browser checks and one real anonymous generation: **2 Gemini requests, 1 Qloo ranking**, a valid **45-minute** proposal rendered in **3.652 seconds**, and successful explicit Apply with edits preserved until then. Production live actions are enabled for judges; shared allowances apply. Local and protected Preview live actions remain paused. The [public source](https://github.com/watchmk25/afterhours) has GitHub-detected MIT licensing. You can also browse, import CSV inventory and edit fixed templates locally without credentials. See the [public-release record](docs/public-release.md) for evidence and limits; this single successful run is not a sustained-performance guarantee.
+This branch implements the adaptive club planner. It is **not deployed to Production**. The [public demo](https://afterhours-umber.vercel.app) continues to run the earlier accepted book workspace; its [public-release evidence](docs/public-release.md) is historical and does not verify this new flow. [Source and MIT license](https://github.com/watchmk25/afterhours) are public.
 
-## The organizer journey
+**Release status checked 30 October 2026:** GitHub reports the repository **PUBLIC**, detects the **MIT** license, and confirms [PR #3](https://github.com/watchmk25/afterhours/pull/3) was merged on 25 October at `e9b5505de388efdd24a333822fc55c845e49af02`. The [25 October release record](docs/public-release.md) documents the published demo and its historical hosted checks; it is not evidence that the current uncommitted workspace has been deployed or live-tested. This export task makes no deployment or visibility changes.
 
-1. **Confirm an audience.** Load example visibly confirms Amélie (2001) + Norah Jones, or choose Interstellar + Hans Zimmer. A live search can resolve another film or musician, but the organizer must inspect and confirm the intended entity. Optional free-text favourites remain personal notes and do not influence matching or planning.
-2. **Apply practical limits.** Choose a maximum price per copy in INR, maximum page count, and languages. Only in-stock books satisfying every constraint appear under **Eligible books**, alphabetically. Prices, pages, stock, edition languages, and display covers in the ten-book sample are illustrative, not retailer or publisher data.
-3. **Request cultural matching explicitly.** Qloo ranks eligible sample books with reviewed provider identities using the confirmed film/music signals. Unassessed eligible books stay browsable and selectable. Nothing calls a provider on page load, while typing, or when loading an example.
-4. **Review a proposed event.** Gemini uses a native tool call to obtain a fresh Qloo ranking, then proposes an eligible book and an agenda for the structured duration. The server validates the book, current numerical evidence, and exact agenda total. Generate and Revise leave the selected book and edited outline intact.
-5. **Apply deliberately.** Explicit **Apply proposal** replaces the selection and outline. The editable event retains the confirmed interests, assessed coverage, actual numerical evidence/references, warnings, and filter snapshot. Later audience/filter changes preserve edits while the book stays eligible and mark the event **Based on previous inputs**, with a route back to the planner.
+## One organizer journey
 
-### What Qloo contributes
+1. **Describe a gathering.** Enter any club description, a goal, duration and group size. Location and a monetary budget are optional; budgets include currency and a per-person or total-event basis. Book edition constraints appear only for a book focus.
+2. **Confirm cultural interests.** One visual picker searches supported books, artists, movies and places. After three characters and a 475 ms pause it makes one mixed search, with up to eight results and no category fan-out. Check names, type badges and supplied disambiguation, then click or press Enter to confirm. Reviewed example suggestions require no request. Only confirmed chips influence matching; optional audience notes do not.
+3. **Discover or bring a shortlist.** Qloo can discover beyond the sample books. For mixed or unclear goals, choose a primary cultural focus or deliberately use organizer-led planning. **Try an example** reveals illustrative sample inventory and Example A, without provider calls. **Use my own list** is an optional local CSV route, with preview and confirmation.
+4. **Generate and review.** Generation includes its own fresh Qloo discovery/ranking; a separate discovery action is optional. Gemini uses one native function call, receives current-run Qloo candidates and evidence, then proposes an agenda. An explicitly chosen focus is honored or a conflict is reported. No recorded response replaces a failed live operation.
+5. **Apply deliberately.** Review the proposal, its exact agenda total, and compact evidence/constraints. Unknown costs, availability, rights and other requirements make feasibility conditional and require acknowledgment. Apply is explicit. Existing edits survive errors, cancellation and input changes; an applied plan retains historical input context rather than silently regenerating.
 
-Qloo resolves cultural entities and supplies the actual ordering, affinity values, and available numerical input contributions for an explicit book shortlist. Gemini supplies proposed event wording and activities; it does not replace Qloo's ranking or invent cultural explanations. Scores are relative provider values, **not probabilities, guarantees of enjoyment, or proof of recommendation quality**.
-
-Only **5 of 10** sample titles have confidently reviewed Qloo mappings. At default filters, **4 of 7 eligible books** can be assessed; the mapped Palace of Illusions is out of stock. Unresolved identities remain unresolved rather than being treated as absent from Qloo. The saved comparison of the two example audiences produced different scores/contributions but the same book ordering. See the [feasibility experiment](docs/qloo-feasibility.md), [reviewed identities](docs/qloo-feasibility-resolutions.json), and [coverage review and negative findings](docs/qloo-coverage-review.md).
-
-Imported inventory supports local filtering and fixed templates only. Matching and Gemini planning currently support the sample catalogue; sample mappings are never applied to imported rows, even when titles match.
+Qloo supplies identities, returned order, affinity and available numerical interest contributions. Gemini supplies **creative activity suggestions**, not proof of cultural affinity or verified practical arrangements. Scores are **not probabilities**. Qloo's artist type does not itself establish that a result is a musician. Film discussion may concern a film watched beforehand; a short event cannot promise a full screening of a longer film.
 
 ## Run locally
 
-Use **Node.js 24 LTS** and npm:
+Use Node.js 24 LTS and the locked dependencies:
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Open the Local URL printed by Next.js, normally **http://localhost:3000**. Browsing, CSV import, filters, and fixed templates need no environment file, API key, account, or external service. System fonts and locally drawn display covers avoid external asset requests.
+Open the local URL printed by Next.js, normally http://localhost:3000. Manual planning, CSV parsing, local filtering and reviewed examples need no keys or network requests. Provider thumbnails are optional: only allowlisted public Qloo image URLs are fetched, without credentials or redirects; failure shows a fallback.
 
 For a local production preview:
 
@@ -40,124 +36,75 @@ npm run build
 npm start
 ```
 
-**Provider keys alone do not enable live actions in the local UI.** Live application requests additionally require shared usage controls and a server-trusted Vercel visitor identity. Ordinary local Next.js requests fail closed. Do not fabricate hosting flags or identity headers to bypass this boundary. Controlled automated tests and trusted local diagnostics are separate workflows.
+Workspace inputs, imported resources, confirmed search results and drafts are page-session only and are lost on reload. Reset clears inputs, selected focus and event while retaining the active catalogue; destroying a dirty draft requires confirmation. Restore sample catalogue is separate from loading the full example. Changing back to old inputs does not revive an invalidated proposal.
 
-### Workspace behavior
+**Download event plan** saves the selected book’s current edited outline as a UTF-8 Markdown file entirely in the browser. Sample and imported fixed templates are supported. For an applied AI proposal, the file separates the edited event from saved interests, filters, coverage, numerical Qloo evidence and warnings, and labels previous-input context as historical. Edited timings are not revalidated; scores are not probabilities. Downloading sends no provider request and changes no selection, draft or proposal.
 
-- Defaults: **₹600**, **400 pages**, and all languages in the active catalogue. Limits are inclusive. Blank, negative, or otherwise invalid limits and an empty language selection show field guidance and no eligible results.
-- **Load example** uses **₹450**, **300 pages**, and English when available, otherwise all active languages. It confirms Example A, fills editable optional notes, clears selection/outline/results, retains the active catalogue, and makes zero API calls.
-- **Reset** clears confirmed interests, optional notes, selection, outline, and results; it restores default numeric limits and all active languages while retaining the active catalogue. **Reset filters** preserves audience inputs and inventory.
-- Selecting a book opens an editable **75-minute fixed template**, labelled not AI-generated. Switching books starts a fresh template. A book made ineligible clears with its outline and does not return automatically when constraints widen.
-- A proposal is a separate preview until Apply. Relevant input changes invalidate previews, including changing back to former values; late responses are ignored. Failures and cancellation preserve existing edits and never substitute saved proposals. Manually edited agenda totals are not automatically revalidated.
-- All inventory, audience inputs, rankings, proposals, selections, and edits are **session-only** and lost on reload.
+## Optional resource CSV
 
-## Import your inventory
+Download the [generic resource template](public/club-resource-template.csv) or the [original book template](public/catalogue-template.csv). Both support UTF-8/BOM, CRLF, quoted commas, escaped quotes and quoted newlines. Limits remain **256 KiB and 500 data rows**. The whole file is validated before an explicit atomic import; cancellation or invalid files preserve inventory, selection and edited event.
 
-Use **Download CSV template** in **Your catalogue**, replace its illustrative row, then choose the file. Required, case-sensitive columns are:
+The original book columns remain supported:
 
 ```csv
 title,author,price_inr,pages,language,stock
 The Guide,R. K. Narayan,299,256,English,18
 ```
 
-The browser parses UTF-8 CSV locally with pinned Papa Parse 5.7.0. The file is never uploaded to a server.
+Generic required columns are `type,name`. Optional columns are `creator,price,currency,price_basis,pages,language,stock,duration_minutes,external_id_type,external_id`.
 
-| Rule | Contract |
-| --- | --- |
-| File limits | At most **256 KiB (262,144 bytes)** and **500 nonblank data rows**, excluding the header. |
-| CSV support | UTF-8 BOM, Windows CRLF, quoted commas, escaped quotes (`""`), and quoted line breaks. |
-| Headers and rows | Headers may be reordered; surrounding whitespace is trimmed; extra columns are ignored. Required headers must be present and unique. Each row must match the header's field count. Truly blank records are skipped; comma-only and quoted-empty records are validated. |
-| Text | Nonempty trimmed `title`, `author`, and `language`. Organizer language labels are retained; different spelling/case produces distinct choices. |
-| Numbers | Finite, nonnegative `price_inr`; positive safe-integer `pages`; nonnegative safe-integer `stock`. Zero-price books are allowed; zero-stock books remain imported but ineligible. Currency display rounds to two decimals. |
-| Invalid files | Malformed quoting, invalid UTF-8, invalid values, inconsistent widths, invalid headers, or exceeded limits reject the **entire file** with row/column guidance. No partial import occurs. |
+- Types: `book`, `artist`, `movie`, `place`; books also require `creator` (author). Distinct creators and types retain separate local identities even when names match. Songs, personal member records, PDFs and images are unsupported.
+- Price: finite, nonnegative, at most 1000000; requires an uppercase three-letter currency and `per_person` or `total_event`. No currency conversion or implicit basis conversion occurs. Pages and duration are positive whole numbers up to 100000; stock is a nonnegative whole number up to 1000000. Edition page/language fields apply to books. Names/creators are at most 200 characters, languages 80.
+- External IDs: checksum-valid `isbn13` for books, `imdb` title IDs for movies, `spotify` artist IDs. An external lookup still requires explicit confirmation of the returned identity. Otherwise matching uses identifying names/creators, never the first result automatically.
+- Only a **selected batch of up to five rows** can be explicitly matched. Each unresolved selected row costs at most one lookup; a 500-row upload never triggers bulk resolution. Unresolved and ambiguous rows stay visible and unassessed. Only confirmed identities enter ranking, and returned shortlist membership is checked.
+- File parsing stays in the browser. **Explicit matching/planning sends only the selected bounded rows, identifying metadata, organizer facts, constraints and confirmed references to the server.** The raw file and unselected rows are not uploaded. Relevant bounded context then reaches Qloo/Gemini; do not put personal or confidential data in it. Data and provider metadata are never tool instructions.
 
-Uploading shows a count and up to five representative rows. **Replace catalogue** is the only confirmation action: it clears selection/outline, preserves confirmed interests, optional notes, and numeric limits, and initially selects all imported languages. Invalid files and **Cancel import** preserve the current inventory, selection, edited outline, and matching state.
+Imported numeric facts are organizer-supplied, not Qloo evidence. Sample prices, stock, pages and languages remain clearly illustrative and server-derived; only five of ten sample books have reviewed mappings. Unknown hard constraints never become silently satisfied. No current retailer prices, tickets, bookings, artist attendance, fees, tracks, rights or edition facts are invented.
 
-Each imported record receives a fresh `local-import-` UUID, separate from Qloo entity IDs. **Restore sample catalogue** restores the ten fixtures and all sample languages, clears selection/outline, and preserves audience inputs and numeric limits. **Reset** retains imported inventory. Reloading discards it and returns to samples.
+## Server configuration and shared controls
 
-## Server configuration and live controls
-
-The tracked [`.env.example`](.env.example) contains empty server-only placeholders and a default-off live switch. Copy it to `.env.local` **only if that file does not already exist**; edit existing configuration privately rather than replacing it. Actual `.env*` files are ignored, with only `.env.example` tracked. Never use `NEXT_PUBLIC_`, print credentials, or place them in commands, browser configuration, screenshots, or tracked files. Inherited process variables take precedence over Next.js environment files; restart/redeploy after changing settings.
+Use [`.env.example`](.env.example) for names only; preserve an existing ignored `.env.local`. No key uses `NEXT_PUBLIC_` or enters browser props. Process variables take precedence over Next.js environment files; restart after changing configuration.
 
 | Setting | Purpose |
 | --- | --- |
-| `QLOO_API_KEY` | Issuer-provided Qloo hackathon credential. |
-| `GEMINI_API_KEY` | Gemini Developer API credential; `GOOGLE_API_KEY` is not used. |
-| `GEMINI_MODEL` | Set to **`gemini-3.5-flash-lite`**, as in the example configuration; this model uses documented **minimal** thinking. |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | One account-owned Upstash Redis **Free** database, with eviction disabled. |
-| `AFTERHOURS_USAGE_SECRET` | Independent server secret of at least 32 characters for hashing trusted visitor identities. |
-| `AFTERHOURS_LIVE_ENABLED` | Exact `true` enables admission; **false/unset pauses live actions**. Keep it off until hosting/store verification is complete. |
+| `QLOO_API_KEY` | Issued hackathon credential, fixed upstream `https://hackathon.api.qloo.com`. |
+| `GEMINI_API_KEY` | Gemini Developer API key; `GOOGLE_API_KEY` is not used. |
+| `GEMINI_MODEL` | `gemini-3.5-flash-lite`, minimal thinking, pinned SDK 2.30.0. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Existing shared Redis store for atomic admission, pacing and leases. |
+| `AFTERHOURS_USAGE_SECRET` | Server-only secret for bounded trusted visitor hashes. |
+| `AFTERHOURS_LIVE_ENABLED` | Operator switch; false/unset rejects live work before provider dispatch. |
 
-Qloo uses the fixed assigned origin **`https://hackathon.api.qloo.com`**, `X-Api-Key` authentication, and only the verified `/search` and `/v2/insights` operations. Callers cannot supply inventory values, mappings, or another host. Search is explicit, bounded to 1–100 characters and three candidates; at most five confirmed interests are used. Standalone ranking needs at least two eligible mapped books; planning may use one. Signed search confirmations expire after 30 minutes or a credential change.
+Keys alone do not enable local live requests. Trusted Vercel visitor identity and shared store admission are required; ordinary local requests fail closed. Do not fabricate hosting flags or trusted headers. No public fixture bypass is included.
 
-The event agent uses pinned `@google/genai` **2.30.0**, the Developer API's native Interactions contract, stateless continuation, and actual function-call IDs/signature-bearing steps. Normal execution uses **two Gemini requests and one fresh Qloo ranking**; the maximum is **three Gemini requests and one Qloo request** per run. It has a **30-second overall deadline**, at most **20 seconds per Gemini request**, and at most **10 seconds for Qloo**, always bounded by remaining run time. No automatic retries or redirects occur. Cancellation propagates to transports but cannot retract already accepted provider work or establish a quota refund.
+Limits are unchanged: **12 searches, 6 standalone discoveries/rankings and 6 generations per visitor/hour; 100 Qloo requests and 90 conservative Gemini reservations/day globally; 2 concurrent event leases; 12 actual Gemini dispatch reservations per rolling 60 seconds**. An event reserves up to three Gemini requests and one Qloo Insights request. Every continuation/repair is paced. There are no automatic retries, queues or waits for allowance.
 
-Event requests use 10–1000 characters and a whole duration from 15–180 minutes. Structured price/page/duration limits remain authoritative: explicit conflicting totals require clarification, while individual activity timings are allowed. A proposal never silently changes the filters.
+Each uncached debounced search and each explicit shortlist lookup consumes one search/Qloo allowance. Recent identical queries are reused for 20 minutes in this page (at most 30 cached queries); starter examples use none. **Exploratory typing can exhaust 12 searches/hour**; debounce does not remove that capacity constraint or secretly increase quotas. Provider TPM, other applications, and work already accepted remotely remain outside this policy. Cancellation does not refund quota.
 
-Shared Redis controls apply across application instances using the same store/namespace:
+Normal generation is **Gemini → one Qloo tool call → Gemini continuation**, at most 3 Gemini/1 Insights per run, a 30-second work deadline, 20 seconds per Gemini request and 10 seconds for Qloo, each bounded by remaining time. Store operations are at most one second; lease cleanup has its independent bounded deadline. Missing configuration, invalid inputs and failed admission cause no provider dispatch. See [usage controls](docs/usage-controls.md), [pacing](docs/gemini-pacing.md), and the [adaptive Qloo contract](docs/club-qloo-contract.md).
 
-| Control | Default |
-| --- | --- |
-| Per-visitor search / standalone ranking / event admissions | **12 / 6 / 6** per one-hour first-admission window. |
-| Shared provider reservations | **100 Qloo / 90 Gemini** per 24-hour first-admission window. |
-| Event reservation | **3 Gemini + 1 Qloo** before work, even if fewer requests succeed. |
-| Gemini pacing | **12 request reservations per rolling 60 seconds**, before every initial, continuation, and repair dispatch. |
-| Concurrent events | **2**, with **45-second expiring leases**. |
-
-Store operations use atomic Lua, bounded fetches, and fail closed. Missing configuration, untrusted identity, store failure, exhausted allowance, or pacing denial prevents the next dispatch; a continuation may be denied after earlier work succeeded. Reservations are not refunded. These are conservative admission controls, **not provider billing guarantees or a monetary spending cap**. Redis stores expiring hashed visitor IDs, counters, and random leases/reservations, never prompts, interests, catalogues, outlines, credentials, or raw IPs. See [shared controls](docs/usage-controls.md) and [Gemini pacing](docs/gemini-pacing.md) for exact boundaries, privacy, and failure behavior.
-
-The isolated, manually invoked store check is `npm run usage` (`usage:check` is an alias). It makes zero provider calls, uses an isolated temporary namespace, permits at most ten Redis requests, and requires confirmed cleanup for PASS. It does not establish live provider access or trusted hosting identity.
-
-## Test and verify
-
-Install Playwright's matching Chromium once:
-
-```sh
-npx playwright install chromium
-```
-
-Run the separate offline suites and build:
+## Verification
 
 ```sh
 npm run lint
-npx tsc --noEmit
+npx tsc --noEmit --incremental false
 npm test
 npm run build
+npx playwright install chromium
 npm run test:e2e
 ```
 
-Routine Node and Chromium checks use controlled transports/provider fixtures and make **zero live Gemini/Qloo calls**. Node tests cover filtering, CSV validation, native contracts, evidence/agenda validation, cancellation, and shared controls; shared-state tests execute production Lua in a test-only Wasmoon VM, not a real Redis service. Chromium journeys cover the organizer flow, explicit Apply/edit preservation, errors, keyboard interaction, and 390px layout. These checks do not establish provider access, physical-device behavior, or sustained live reliability.
+Node tests remain independent from Playwright. Browser tests use controlled API fixtures, one worker, no retries and retained failure traces/screenshots. They intercept every application API and prevent live provider/store traffic. For a production-build target, start it separately and set `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100` (PowerShell: `$env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:3100'`); an explicit target never starts a local server. Public/authorized Preview URLs must be HTTPS origins. Existing protected testing tooling remains separate and unchanged.
 
-Playwright uses one worker, zero automatic retries, and **http://localhost:3000**. It reuses a local responding server or starts `npm run dev` if absent; CI starts a fresh server. The preflight checks the AfterHours title and workspace sections. Wrong targets, port conflicts, redirects, and server-lock problems fail visibly; the runner does not kill unrelated processes or delete locks. To check production output, start `npm start` after the build, then run the suite separately.
+This adaptive phase makes **zero live Gemini, Qloo or Redis requests**. Expanded provider behavior is documented and tested with controlled transports, not claimed live-verified. See [implementation and actual check results](docs/adaptive-club-planner.md). Prior [feasibility](docs/qloo-feasibility.md), [coverage findings](docs/qloo-coverage-review.md) and [public acceptance](docs/public-release.md) remain historical: the saved audiences changed scores without changing ordering, and do not prove recommendation quality.
 
-Set `PLAYWRIGHT_BASE_URL` to an explicit deployed HTTPS origin to test it; loopback HTTP origins are also supported. An explicit URL disables local-server startup/fallback. An empty/invalid value fails rather than reverting to localhost. Protected Preview access uses the existing secure Node-only OIDC/automation transport; credentials never enter browser requests, URLs, cookies, or traces. Authorized testing does not establish anonymous access. See [protected test access](docs/hosted-preview.md) and [the current deployment handoff](docs/git-preview-deployment.md).
+**Download verification — 30 October 2026:** lint, TypeScript, production build and all **368 Node tests** passed, including eight focused export regressions. **21 relevant Chromium checks** passed against the local production build, including three real download journeys: edited sample template with keyboard activation, imported template at 390px, and an applied proposal with historical context and an unapplied replacement. Download contents and unchanged draft/selection/proposal state were checked using controlled fixtures, with **zero live Gemini/Qloo/Redis calls**. This was a relevant browser subset, not a rerun of the entire pending adaptive-planner suite. No push or deployment was made.
 
-Reports: `playwright-report/index.html` (`npx playwright show-report`) and `test-results/results.json`. Failure screenshots/traces and mobile captures are retained under `test-results/`; locally retained review evidence is under `artifacts/playwright/`. All are ignored, and subsequent runs replace generated reports. Historical results, timings, source commits, and screenshots remain in the linked verification records rather than being presented as current release acceptance.
+**Adaptive completion — later on 30 October 2026:** the full controlled production-browser suite now passes **44/44** (45.472 seconds, one worker, no retries or skips), and the full Node suite passes **370/370**. Lint, TypeScript and production build pass. Initial selector failures were corrected without reducing their assertions; actual fixes cover focused-picker reopening, expired imported-identity recovery, chosen-batch removal, duplicate confirmed identities and malformed UTF-8/import navigation. Fresh audience/constraint requests, current native-tool evidence, revision, edit preservation, explicit Apply and final download are covered. **Zero live Gemini/Qloo/Redis calls.** See the [completion record and smallest proposed live acceptance](docs/adaptive-club-planner.md). Production remains unchanged; this branch is ready for a scoped local checkpoint, not a claim of live acceptance.
 
-### Trusted local diagnostics
+Trusted diagnostics (`npm run qloo`, `npm run usage`, `npm run qloo:feasibility`) are manually invoked separate tools. They retain their existing request behavior and were **not run** in this phase. Do not run them as routine application tests.
 
-- **`npm run qloo`** (`qloo:smoke` alias): the pinned official harness 0.1.26 performs at most one bounded book search for The Guide, limited to three candidates. With no credential it reports “Qloo credentials not configured” and sends zero requests. Credentials reach the child only through its environment; assigned-origin, one-request, timeout, and no-redirect guards remain separate from the application runtime. Review actual candidate identity rather than accepting the first result.
-- **`npm run qloo:feasibility -- verify`**: offline verification of saved experiment results. No argument prints usage. The completed live experiment's persisted ledger must not be reset or rerun to seek a different outcome; see its [request contract and evidence](docs/qloo-feasibility.md).
-- **`npm run usage`**: isolated Redis-only verification described above; it is optional and performs real store requests only when deliberately invoked with configured credentials.
+## Scope and license
 
-## Documentation and project layout
+No accounts, saved workspaces, uploads to a database, booking, retailer synchronization, song-level data, LLM/provider framework or additional model is added. The browser-only Markdown download does not persist the workspace. Expanded live support requires separately authorized verification against actual provider responses; unknown account access, quotas and metadata variations remain limitations. Review generated suggestions and conditional requirements before organizing an event.
 
-- [Submission/product narrative](docs/devpost-submission.md), [frozen release handoff](docs/release-readiness.md), and [public-release review](docs/public-release-review.md): current claims, release status, and remaining work.
-- [Live matching](docs/live-qloo-matching.md), [feasibility](docs/qloo-feasibility.md), and [coverage review](docs/qloo-coverage-review.md): provider contracts, actual evidence, partial coverage, and negative findings.
-- [Event agent](docs/event-agent.md) and [audience-to-event journey](docs/audience-event-journey.md): native tools, validation, applied context, and recorded verification.
-- [Hosted Preview](docs/hosted-preview.md), [shared controls](docs/usage-controls.md), [pacing](docs/gemini-pacing.md), and [Git deployment handoff](docs/git-preview-deployment.md): access, limits, verification gaps, and deployment procedure.
-- [Dependency audit](docs/dependency-audit.md): recorded advisory paths and exposure assessment; not a guarantee that later releases have no findings.
-
-`app/` contains Next.js routes/layout/styles; `components/` contains the organizer UI; `lib/` contains catalogue/filtering, provider contracts, validation, and server-only integrations/usage controls. `tests/` holds independent Node checks; `e2e/` holds fixture-driven Chromium journeys; `scripts/` holds explicitly invoked trusted diagnostics. The CLI harness and test-only Lua VM are not imported by the application runtime.
-
-## Limitations and release status
-
-The sample catalogue is small and illustrative, coverage is partial, and imported inventory has no live provider mapping. Audience examples are hypothetical, optional notes are unconfirmed, and two examples do not establish recommendation quality. Gemini activities and invitations require organizer review; they are not verified literary analysis or cultural explanations.
-
-No application accounts, saved-workspace database, persistent catalogue upload, exports, retailer synchronization, or broader entity-resolution workflow is included. All workspace content is lost on reload. Redis retains usage metadata only. Shared limits depend on store continuity/eviction settings and trusted hosting headers; shared/rotating IPs, fixed-window bursts, other apps using the same provider account, and provider-side work after cancellation remain limitations.
-
-The repository remains private and PR #3 remains draft/unmerged. Preview protection and production remain unchanged. Current shared-control hosted verification, final release access, provider quotas/cost controls, account-owned Free-plan/eviction settings, and monitoring must be confirmed before a public live demo. Historical local/hosted successes predate these current release checks and do not establish sustained performance or public reliability.
-
-## License
-
-Project code is licensed under [MIT](LICENSE). Third-party dependencies and external provider services retain their own licenses and terms.
+Original project code is [MIT licensed](LICENSE). Dependencies and external providers retain their own licenses and terms. Production, main, deployment settings, credentials and repository visibility are unchanged by this feature branch.

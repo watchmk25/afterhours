@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import type { Book, FilterInputs } from "@/lib/types";
 import type { EventProposal } from "@/lib/event-types";
+import { createBookEventPlanFile, downloadEventPlan } from "@/lib/event-plan-export";
 
 type OutlineDraft = {
   title: string;
@@ -26,11 +27,12 @@ function createTemplate(book: Book | null, proposal: EventProposal | null): Outl
   };
 }
 
-export function EventOutline({ book, proposal = null, appliedFilters = null, previousInputs = false }: {
+export function EventOutline({ book, proposal = null, appliedFilters = null, previousInputs = false, catalogueSource }: {
   book: Book | null;
   proposal?: EventProposal | null;
   appliedFilters?: FilterInputs | null;
   previousInputs?: boolean;
+  catalogueSource?: "sample" | "imported";
 }) {
   const fieldId = useId();
   const applied = proposal?.selectedBookId === book?.id ? proposal : null;
@@ -66,6 +68,9 @@ export function EventOutline({ book, proposal = null, appliedFilters = null, pre
             Edits stay in this session. Switching books starts a fresh template.
             {applied ? " Applying another proposal replaces this draft." : ""}
           </p>
+          <button type="button" className="button button-secondary" onClick={() => downloadEventPlan(createBookEventPlanFile({
+            book, draft, proposal: applied, appliedFilters, previousInputs, catalogueSource,
+          }))}>Download event plan</button>
 
           {applied && appliedFilters && <section className="applied-event-context" aria-label="Applied event context">
             <h4>Applied event context</h4>
