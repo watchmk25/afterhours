@@ -36,6 +36,11 @@ class ClubAgentError extends Error {
 }
 function userStep(text: string): Interactions.Step { return { type: "user_input", content: [{ type: "text", text }] }; }
 
+// Leave 1s for bounded lease cleanup and 1s for validation/response handling.
+// These are reservations within the existing 30s route budget, not extra time.
+export const CLUB_COMPLETION_RESERVE_MS = 2_000;
+export const CLUB_CONTINUATION_LIMIT_MS = 28_000;
+
 /** New product contract; diagnostics and the legacy sample adapters stay independent. */
 export function createClubAgent({ gemini, qloo, geminiConfigured, qlooConfigured, thinkingLevel = "minimal", beforeGemini, overallTimeoutMs = 30_000 }: {
   gemini?: GeminiProvider; qloo: ClubQloo; geminiConfigured: boolean; qlooConfigured: boolean;
@@ -97,11 +102,17 @@ export function createClubAgent({ gemini, qloo, geminiConfigured, qlooConfigured
         let repaired = false;
         while (usage.geminiRequests < 3) {
           active();
+          const requestBudget = () => {
+            const available = remaining() - CLUB_COMPLETION_RESERVE_MS;
+            if (available <= 0) throw new ClubAgentError("RUN_TIMEOUT", "The planning run has no provider time left before its completion reserve. Your draft was not replaced.", 504);
+            return Math.min(discovery ? CLUB_CONTINUATION_LIMIT_MS : 20_000, available);
+          };
+          requestBudget(); // Do not spend pacing/store allowance after provider time is exhausted.
           if (Buffer.byteLength(JSON.stringify(history)) > 96 * 1024) throw new ClubAgentError("CONTEXT_LIMIT", "The bounded planning context was exceeded. Your draft was not replaced.");
           if (beforeGemini) {
             begin("gemini_pacing");
             let admission: Awaited<ReturnType<BeforeGemini>>;
-            try { admission = await beforeGemini(controller.signal, remaining()); }
+            try { admission = await beforeGemini(controller.signal, remaining() - CLUB_COMPLETION_RESERVE_MS); }
             catch { active(); finish("failed"); return fail(503, "USAGE_UNAVAILABLE", "Shared model pacing could not be checked. No additional model request was sent."); }
             active();
             if (!admission.ok) { finish("failed"); return fail(admission.error.status, admission.error.code, admission.error.message, undefined, admission.error.retryAfterSeconds); }
@@ -114,9 +125,10 @@ export function createClubAgent({ gemini, qloo, geminiConfigured, qlooConfigured
               ? { allowed_tools: { mode: "any", tools: ["discover_cultural_focus"] } } : "auto" },
             ...(discovery ? { response_format: { type: "text" as const, mime_type: "application/json", schema: CLUB_OUTPUT_SCHEMA } } : {}),
           };
+          const budget = requestBudget(); // Includes time spent on pacing and request construction.
           usage.geminiRequests += 1;
           begin("gemini");
-          const response = await gemini.create(turn, controller.signal, Math.min(20_000, remaining()));
+          const response = await gemini.create(turn, controller.signal, budget);
           active(); finish("completed");
           if (!Array.isArray(response.steps) || response.steps.length > 32 || Buffer.byteLength(JSON.stringify(response.steps)) > 128 * 1024) throw new ClubAgentError("MODEL_RESPONSE_INVALID", "The model returned an unsupported or oversized interaction.");
           if (response.steps.some((step) => step.type.endsWith("_call") && step.type !== "function_call")) throw new ClubAgentError("TOOL_CALL_REJECTED", "The model requested a tool that is not enabled for this planner.");
@@ -172,6 +184,7 @@ export function createClubAgent({ gemini, qloo, geminiConfigured, qlooConfigured
           catch { /* The bounded repair sees validation issues, never raw output. */ }
           begin("validation");
           const validated = validateClubOutput(output, { input, discovery, selectedEntityId: selected?.entityId });
+          active(); // Synchronous parsing/validation must not accept a late response.
           if (validated.ok && (validated.output.status === "clarification" || discovery)) {
             finish("completed"); return { status: 200, body: { ok: true, result: validated.output, trace, usage } };
           }

@@ -58,6 +58,8 @@ const endpoint = "/v1beta/interactions";
 const maximumRequestBytes = 128 * 1024;
 const maximumResponseBytes = 256 * 1024;
 const maximumDeadlineMs = 20_000;
+// An explicit server-only adaptive opt-in; legacy callers keep the 20s ceiling.
+const maximumAdaptiveDeadlineMs = 28_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -121,13 +123,16 @@ export function createGeminiProvider({
   apiKey,
   model = "gemini-3.8-flash",
   fetcher = globalThis.fetch,
-  timeoutMs = maximumDeadlineMs,
+  maxRequestTimeoutMs = maximumDeadlineMs,
+  timeoutMs = maxRequestTimeoutMs,
   onDiagnostic,
   onResponse,
 }: {
   apiKey: string;
   model?: string;
   fetcher?: typeof fetch;
+  /** Server-controlled ceiling, clamped to 28s. The caller must also pass its remaining budget. */
+  maxRequestTimeoutMs?: number;
   timeoutMs?: number;
   onDiagnostic?: (diagnostic: GeminiDiagnostic) => void;
   /** Trusted server-only observer. Retain originals in memory; persist only the snapshot. */
@@ -146,8 +151,10 @@ export function createGeminiProvider({
         try { onResponse?.({ ...snapshot, ...(rejection ? { rejection } : {}) }, original); } catch { /* Observation cannot change validation. */ }
       };
       if (!Number.isFinite(remainingMs) || remainingMs <= 0) throw new GeminiProviderError("GEMINI_DEADLINE", undefined, "gemini_request");
+      const ceiling = Number.isFinite(maxRequestTimeoutMs) && maxRequestTimeoutMs > 0
+        ? Math.min(maxRequestTimeoutMs, maximumAdaptiveDeadlineMs) : maximumDeadlineMs;
       const configuredDeadline = Number.isFinite(timeoutMs) && timeoutMs > 0
-        ? Math.min(timeoutMs, maximumDeadlineMs) : maximumDeadlineMs;
+        ? Math.min(timeoutMs, ceiling) : Math.min(maximumDeadlineMs, ceiling);
       const deadline = Math.min(configuredDeadline, remainingMs);
       const abortFromCaller = () => { controller.abort(); };
       signal.addEventListener("abort", abortFromCaller, { once: true });

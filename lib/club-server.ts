@@ -1,7 +1,7 @@
 import "server-only";
 import { createHmac } from "node:crypto";
 import { createClubQloo } from "./club-qloo.ts";
-import { createClubAgent } from "./club-agent.ts";
+import { CLUB_CONTINUATION_LIMIT_MS, createClubAgent } from "./club-agent.ts";
 import { createGeminiProvider } from "./gemini-provider.ts";
 import { parseClubInput } from "./club-validation.ts";
 import { admitGeminiRequest, admitRequestUsage } from "./usage-runtime.ts";
@@ -53,7 +53,7 @@ export async function handleClubRequest(request: Request, operation: "search" | 
   const makeAgent = (overallTimeoutMs: number) => createClubAgent({
     qloo, geminiConfigured: !!geminiKey, qlooConfigured: !!process.env.QLOO_API_KEY?.trim(), overallTimeoutMs,
     thinkingLevel: model === "gemini-3.5-flash-lite" ? "minimal" : "low", beforeGemini: admitGeminiRequest,
-    ...(geminiKey ? { gemini: createGeminiProvider({ apiKey: geminiKey, model,
+    ...(geminiKey ? { gemini: createGeminiProvider({ apiKey: geminiKey, model, maxRequestTimeoutMs: CLUB_CONTINUATION_LIMIT_MS,
       onDiagnostic: (diagnostic) => console.error("[AfterHours Gemini]", JSON.stringify(diagnostic)),
     }) } : {}),
   });
