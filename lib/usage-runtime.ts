@@ -4,6 +4,7 @@ import { createRedisUsageStore, USAGE_STORE_TIMEOUT_MS } from "./usage-redis.ts"
 import { usageVisitor } from "./usage-identity.ts";
 import { createGeminiPacing } from "./gemini-pacing.ts";
 import type { BeforeGemini } from "./event-agent.ts";
+import { liveWorkEnabled } from "./live-switch.ts";
 
 /** Each model dispatch is paced against the same store, within the run's budget. */
 export const admitGeminiRequest: BeforeGemini = async (signal, remainingMs) => {
@@ -21,7 +22,7 @@ export const admitGeminiRequest: BeforeGemini = async (signal, remainingMs) => {
 };
 
 export async function admitRequestUsage(request: Request, operation: UsageOperation): Promise<UsageAdmission> {
-  if (process.env.AFTERHOURS_LIVE_ENABLED !== "true") return { ok: false, error: {
+  if (!liveWorkEnabled()) return { ok: false, error: {
     status: 503, code: "LIVE_DISABLED", message: "Live matching and planning are paused by the organizer. Browsing, CSV filters, manual templates, and your current event edits remain available.",
   } };
   const unavailable: UsageAdmission = { ok: false, error: { status: 503, code: "USAGE_UNAVAILABLE",
