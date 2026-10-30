@@ -1,6 +1,6 @@
 # AfterHours — Devpost submission draft
 
-Updated **30 October 2026** after successful anonymous public adaptive acceptance. **Ready for entrant review; not submitted.**
+Updated **31 October 2026** from saved public book, movie and conditional artist acceptance evidence. **Ready for entrant review; not submitted.** This publication adds no live provider/store calls. [Sanitized additional-example record](public-club-examples.md); [copy-ready story](devpost-final.md#project-story).
 
 ## Submission fields
 
@@ -8,13 +8,13 @@ Updated **30 October 2026** after successful anonymous public adaptive acceptanc
 | --- | --- |
 | Project name | AfterHours |
 | One-line pitch | Find a cultural focus your club can gather around, then shape a grounded, editable event plan. |
-| Public demo | **<https://afterhours-umber.vercel.app>** — anonymous adaptive book generation, explicit Apply and edited-plan download passed; Production enabled for judges, subject to shared limits/provider availability. |
+| Public demo | **<https://afterhours-umber.vercel.app>** — book discovery/Apply/edited Markdown export, a previously watched-film discussion and conditional artist planning passed their public scenarios; Production enabled for judges, subject to shared limits/provider availability. |
 | Public source | **<https://github.com/watchmk25/afterhours>** — anonymous access and GitHub MIT detection rechecked. Runnable setup is in README. |
 | Reproducible live-tested application | **[`385d7ec75990421909af12dc7e782837f66bcaba`](https://github.com/watchmk25/afterhours/tree/385d7ec75990421909af12dc7e782837f66bcaba)**, normal PR #7 merge, application-identical to verified implementation `65ba642…`. A later documentation-only deployment has the same application files; its exact final SHA is distinguished in the release handoff / [PR #6](https://github.com/watchmk25/afterhours/pull/6). No release tag is claimed. |
 | License | Root **MIT**, copyright 2026 Mousam Kumar, covering original code. Dependencies/provider terms remain applicable. |
 | Entrant/team | Solo entry previously confirmed. Use the entrant's own Devpost profile; confirm public name/profile URL, eligibility and rights. No additional team member or profile is invented. |
-| Optional video | Not recorded/verified here; optional. It does not replace the functional published demo. |
-| Screenshots | Current real anonymous acceptance: `artifacts/playwright/public-continuation-live-applied-desktop.png` and `public-continuation-live-applied-mobile-390.png`. Choose/upload sanitized screenshots manually; do not label controlled fixtures as live. |
+| Optional video | A 75.2-second narrated real book demo and synchronized SRT are saved locally under `artifacts/playwright/submission-assets/demobites-afterhours/final/`; the DemoBites export is unpublished. The entrant may upload it manually. No film/music footage is implied and no non-book export is claimed. |
+| Screenshots | Saved real book acceptance plus the six genuine proposal/entity/applied images and short captions under `artifacts/playwright/submission-assets/club-examples-2026-10-31/`. Choose/upload sanitized media manually; do not label controlled fixtures as live. |
 
 ## Project description
 
@@ -22,7 +22,7 @@ Updated **30 October 2026** after successful anonymous public adaptive acceptanc
 
 A reading circle or bookstore needs more than a title: it needs a focus its audience connects with and a practical gathering people can participate in. Organizers may know the films and musicians their group likes before they know what everyone wants to read. AfterHours brings confirmed cultural interests, practical constraints, provider evidence and an editable event plan into one workspace.
 
-The broader interface also accommodates music societies, film groups and other clubs by letting organizers describe their group and goal in their own words. The demonstrated live scenario is book discovery; other supported formats are implemented and tested with controlled responses, not claimed live-verified. We have not established bookstore adoption, attendance improvements, revenue impact or recommendation quality through user research.
+The broader interface also accommodates music societies, film groups and other clubs by letting organizers describe their group and goal in their own words. Demonstrated live scenarios include book discovery, an Inception (2010) discussion after prior viewing, and a conditional Tori Amos artist plan. Musician identity and lawful playback remain unconfirmed; place and shortlist flows remain live unverified. We have not established bookstore adoption, attendance improvements, revenue impact or recommendation quality through user research.
 
 ### What it does
 
@@ -54,15 +54,17 @@ Valid render took **5.693 seconds**, using **2 Gemini requests / 1 fresh Qloo In
 
 The saved audience comparison changed scores/contributions **without changing ordering** for the same four-book shortlist. We did not change seeds until rankings flipped or force ambiguous catalogue mappings. This shows signal-dependent API output, not established user satisfaction or better recommendations. [Feasibility](qloo-feasibility.md), [coverage review](qloo-coverage-review.md).
 
+On **31 October**, the film example used Example B and selected **Inception (2010)**; the artist/music example used Example A and selected **Tori Amos**. Each returned eight current Qloo options, passed current candidate/evidence membership and exact 45-minute agenda checks, and was explicitly Applied after conditional acknowledgment. Film used **2 Gemini / 1 Qloo Insights**; music used **3 Gemini / 1 Qloo Insights**, including one permitted in-run validation repair. Each scenario used **one Generate**, with no replacement generation. Film participants watch beforehand and screening permissions remain unconfirmed. The artist record does not independently confirm musician identity, and lawful playback remains conditional. [Actual inputs, evidence and boundaries](public-club-examples.md).
+
 ### Current limits
 
-Artist/movie/place and shortlist flows remain **live unverified**; book discovery is the public acceptance scenario. A broad artist entity does not establish musician identity. Film discussion can concern a film watched beforehand; a short plan cannot imply a complete longer screening or rights. No booking, retailer synchronization, artist attendance/fees, song-level data, persistent account/workspace or guaranteed inventory is supplied.
+**Place and shortlist flows remain live unverified.** The live Tori Amos example is conditional artist planning: a broad Artist record does not independently establish musician identity, and lawful playback still needs confirmation. The live Inception example discusses a film watched beforehand; it does not put a full screening into 45 minutes or secure screening permissions. Markdown export is demonstrated only for book plans. No booking, retailer synchronization, artist attendance/fees, song-level data, persistent account/workspace or guaranteed inventory is supplied.
 
 Shared controls bound application reservations, not provider TPM, other apps using the same account, a monetary cap, per-person identity or sustained availability. Cancellation cannot refund quota already consumed remotely. Provider outages/latency and exhausted allowances may reject work; failures do not substitute a sample proposal or overwrite edits. Free-plan/eviction management settings and current account quotas were not newly audited for this release. Review rights, practical arrangements and generated wording before holding an event.
 
 ## Judge walkthrough — verified public book scenario
 
-Open the public demo without an account. These are judge instructions, not an additional automated live allowance; this release's single allowance has been spent.
+Open the public demo without an account. These are judge instructions, not an additional automated live allowance. The saved acceptance runs are already complete; publishing this document sends no new planning request.
 
 1. Click **Try an example**. Example A chips should show **Amélie** and **Norah Jones**, with no provider request. Keep the default neighborhood reading-circle description/goal, **Duration (minutes) = 45**, group size 12 and **Primary cultural focus = Book**.
 2. Expand **Budget and relevant constraints (optional)**. Confirm **450**, currency **INR**, basis **Per person**, **Maximum pages = 400**, and Bengali/English/Hindi. These are desired constraints; undisclosed edition/price/stock facts will still need confirmation.
@@ -82,6 +84,8 @@ On pause, busy/limit messages or provider failure, stop and retain the draft rat
 | Protected patch acceptance | **Historical PASS**, `65ba642…`, **2 Gemini / 1 Qloo**, render **8.566 s**, Apply and edited download. [Deadline record](adaptive-continuation-deadline.md) |
 | New anonymous public acceptance | **PASS**, `385d7ec…`, HTTP 200, **2 Gemini / 1 Qloo**, eight current candidates, exact 45 minutes, preserved edits, Apply and edited download, render **5.693 s**. [Current release](adaptive-continuation-release.md) |
 | Current public stage timings | Pacing **16 / 7 ms**, Gemini **1,866 / 3,087 ms**, Qloo **92 ms**, validation **4 ms**; HTTP response **5,682 ms**, loading **51 ms**. Exact live Redis request total unknown; no repeat Redis diagnostic. |
+| 31 October film example | **PASS:** Inception (2010), eight current options, exact 45-minute discussion and explicit Apply. **2 Gemini / 1 Qloo**, one Generate; prior viewing required and screening permissions unconfirmed. [Record](public-club-examples.md) |
+| 31 October artist/music example | **Conditional PASS:** Tori Amos, eight current options, exact 45-minute agenda and explicit Apply. **3 Gemini / 1 Qloo**, one Generate including one permitted in-run validation repair; musician identity and lawful playback unconfirmed. No replacement generation or non-book export. [Record](public-club-examples.md) |
 | Earlier failure / rollback | Prior `771202c…` public attempt: **504 GEMINI_DEADLINE**, **2 Gemini / 1 Qloo**, **23.064 s**, edits preserved, no valid proposal. Preserved as history, not current status. [Earlier release](adaptive-public-release.md) |
 | Source/license/access | Anonymous GitHub API 200, public repository, MIT detected. Adaptive page 200; Preview-only Production diagnostic 404. Source and deployment metadata checked separately; GET alone is not live acceptance. |
 
@@ -91,5 +95,5 @@ The [official overview](https://qloo.devpost.com/) and [rules](https://qloo.devp
 
 1. Review/paste this project description and public URLs into the Devpost entry. Use the current adaptive walkthrough and the reproducible source pin above, not the restored-fallback instructions from the earlier failed release.
 2. Confirm the entrant's Devpost public name/profile, solo membership, eligibility, third-party rights and required attestations. No unknown profile, testimonial, adoption metric or additional member has been filled in.
-3. Select current sanitized screenshots. Add an optional video only if actually recorded, labelling any older/protected/controlled footage accurately and hiding credentials. It cannot replace the working public demo.
+3. Select the saved sanitized book/film/artist screenshots and captions. An optional real book demo with narration and SRT is saved locally; review and upload it manually if desired. Do not imply it contains the later film/music runs, label controlled fixtures as live, or expose private working artifacts. It cannot replace the working public demo.
 4. Submit before the deadline and retain the receipt. Keep the enabled demo available during judging; monitor provider/store allowances without claiming a capacity or spending guarantee. Preview remains protected and paused; the prior accepted deployment remains available for rollback. **No final Devpost submission has been performed by this task.**
