@@ -128,7 +128,7 @@ test("regression context blocks unmocked provider routes before any protected re
   const context = { route: async (_pattern: string, callback: typeof handler) => { handler = callback; } } as unknown as BrowserContext;
   await installProtectedPreviewTransport(context, configuration);
   assert.ok(handler);
-  for (const path of ["/api/event-agent", "/api/event-agent/", "/api/qloo/search", "/api/qloo/rank"]) {
+  for (const path of ["/api/event-agent", "/api/event-agent/", "/api/qloo/search", "/api/qloo/rank", "/api/club/search", "/api/club/discover", "/api/club/plan"]) {
     let fulfilled = false;
     const route = {
       request: () => ({ url: () => `${origin}${path}` }),

@@ -98,7 +98,7 @@ export async function installProtectedPreviewTransport(context: BrowserContext, 
   await context.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
-    if (/^\/api\/(?:qloo(?:\/|$)|event-agent(?:\/|$))/u.test(url.pathname)) {
+    if (/^\/api\/(?:qloo(?:\/|$)|club(?:\/|$)|event-agent(?:\/|$))/u.test(url.pathname)) {
       await route.fulfill({ status: 503, json: { ok: false, error: { code: "CONTROLLED_TEST", message: "Unmocked provider requests are blocked by the regression runner." } } });
       return;
     }

@@ -22,7 +22,7 @@ const MAX_SHOWN_ERRORS = 20;
 
 // Papa Parse deliberately tolerates quotes inside unquoted fields. Inventory
 // imports require strict quoting so a typo cannot silently alter a book's data.
-function inspectQuoteSyntax(source: string): {
+export function inspectQuoteSyntax(source: string): {
   error?: CatalogueImportError;
   blankRows: Set<number>;
 } {

@@ -1,0 +1,33 @@
+# Adaptive club planner: Qloo boundary
+
+Implemented and checked offline on 26 October 2026. This record describes a documented HTTP contract and controlled transports, **not live verification** of the expanded flows. The previous book-workspace live evidence remains historical.
+
+## One request per operation
+
+All operations use `GET`, `X-Api-Key`, and the issuer-assigned origin `https://hackathon.api.qloo.com`. Only `/search`, `/entities`, and `/v2/insights` are permitted by construction. No endpoint is accepted from a client, no redirect is followed, no request is retried or paginated, and responses are bounded to 1 MiB. Each operation has a maximum ten-second deadline and accepts caller cancellation; the agent's remaining overall budget also bounds its tool call.
+
+- Mixed interest search: `/search?query=…&take=8`. The optional `types` parameter is omitted. Unsupported result types are omitted from the picker; there is no category fan-out. Explicit shortlist searches may add one exact `types=urn:entity:<kind>` filter.
+- Reliable external identity lookup: `/entities` with exactly one of `external.isbn13.ids`, `external.imdb.ids`, or `external.spotify.ids`, for the matching book/movie/artist kind. ISBN checksums are validated. This replaces, rather than supplements, name search. The UI still requires explicit result confirmation; an external lookup never automatically accepts the first response. There is no search fallback.
+- Discovery/ranking: `/v2/insights`, `filter.type=urn:entity:book|artist|movie|place`, confirmed `signal.interests.entities`, `sort_by=affinity`, `feature.explainability=true`, and `take<=8`. A supplied shortlist or explicit focus adds `filter.results.entities` containing only verified signed identities. For places an optional organizer location uses the documented `filter.location.query` with `filter.location.radius=0`; this is a locality constraint, not booking confirmation.
+
+The [search reference](https://github.com/qloo/docs-public/blob/main/reference/get-search.md) documents optional categories and bounded `take`; the [entities reference](https://github.com/qloo/docs-public/blob/main/reference/get-entities.md) documents external-ID lookups. The [per-type parameter guide](https://github.com/qloo/docs-public/blob/main/reference/available-parameters-by-entity-type.md) and [Insights guide](https://github.com/qloo/docs-public/blob/main/reference/basic-insights-use-case.md) establish the supported types and filters. The pinned harness's entity reader accepts both `results.entities` and a `results` array; this service bounds and validates either rather than assuming a third schema. No harness code is imported into application runtime.
+
+## Identity and evidence
+
+Search/discovery results are validated from their `types` or `subtype`, UUID, actual name, and optional supplied disambiguation. Only small type-relevant metadata is retained. Book creator/publication year, movie year/running time, and place address/ordinal price level are optional; absence remains absence. A generic Qloo artist is **not proof of musician identity**. Only the previously reviewed Norah Jones/Hans Zimmer starter identities carry that reviewed music label.
+
+Server-issued HMAC references cover the sanitized identity and retained metadata for thirty minutes. Altered or expired claims are rejected. Reviewed presets and the five reviewed sample-book mappings are resolved from bundled authoritative data. Imported local IDs never become Qloo IDs. Sample prices, stock, page counts, and languages are always re-derived on the server; client replacements are ignored. Shortlist facts are explicitly organizer-supplied, not provider proof.
+
+Only actual finite `query.affinity` values and valid returned contributions for the current confirmed interests become evidence. Contribution scores must be within the documented range, and neither kind is displayed as a probability. Returned entities outside the requested type/shortlist, duplicate entities, or a missing explicitly chosen focus cause rejection. Explainability absence and warnings are retained honestly. An empty result is not replaced with recorded results.
+
+## Feasibility and coverage
+
+Hard constraints have `satisfied`, `violated`, or `needs_confirmation` assessments with provenance. Known violations are excluded; unknown exact costs, stock, edition facts, rights, artist attendance, playback details and booking cannot count as verified. An ordinal venue price level cannot satisfy an exact monetary budget. A full screening that exceeds the event duration is rejected; a discussion of a film watched beforehand is a separate feasible format, still subject to permission/access confirmation.
+
+Discovery coverage is the actual returned, validated options. For a selected inventory batch, coverage reports eligible submitted rows, confirmed resolved rows, and assessed options. The plan retains the actual eligible pool snapshot, including unresolved names and local identities; resolved names/IDs come from signed evidence. Unresolved rows remain unassessed. At most five selected rows enter a planning request; importing 500 rows never issues 500 lookups. Ambiguity requires user confirmation, and unsupported goals ask for a primary focus or deliberately chosen organizer-led planning.
+
+## Capacity and remaining uncertainty
+
+Existing shared limits are unchanged: twelve visitor searches/hour, six standalone rankings/hour, six event runs/hour; global Qloo allowance one hundred/day and conservative Gemini reservations ninety/day, with twelve Gemini dispatches per rolling minute. Each uncached debounced search or explicit resolution consumes **one** search/Qloo allowance. Discovery consumes one ranking/Qloo allowance; a generation reserves up to three Gemini requests and one Qloo request. Debounce, starter suggestions and session reuse reduce load but do not increase capacity. Broad exploratory typing can exhaust twelve searches/hour; the UI must report that honestly.
+
+Offline tests cover mixed types, external lookup, tampering/expiry, authoritative sample filtering, partial coverage, shortlist membership, explicit selection, unknown facts, type-specific duration, cancellation before/during fetch/body reads, bounded timeouts, absent images, empty results and sanitized provider failures. No new live Qloo, Gemini, or Redis requests were made for this work. Live response variations or account-specific support for these expanded operations remain unverified until separately authorized.

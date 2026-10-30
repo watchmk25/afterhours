@@ -264,6 +264,7 @@ export function OrganizerWorkspace() {
               proposal={appliedProposal?.proposal ?? null}
               appliedFilters={appliedProposal?.filters ?? null}
               previousInputs={!!appliedProposal && appliedProposal.scope !== rankingScope}
+              catalogueSource={catalogue.source}
             />
           </div>
         </div>

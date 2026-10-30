@@ -1,637 +1,120 @@
-import { expect, test, type Locator, type Page, type Route } from "./fixtures";
-import { SAMPLE_CATALOGUE } from "../lib/catalogue";
+import { test, expect, configure, stubPlan, plan, type Page } from "./club-fixtures";
+import type { ClubInput, CulturalKind } from "../lib/club-types";
 import { QLOO_PRESETS } from "../lib/qloo-sample";
-import type { EventAgentInput, EventAgentResponse, EventProposal, ProposalDraft } from "../lib/event-types";
+import { readFile } from "node:fs/promises";
 
-// All wording, evidence values, and usage below are controlled test fixtures.
-// They are never represented as observations from a live model/provider run.
-const presetA = QLOO_PRESETS[0];
-const presetB = QLOO_PRESETS[1];
-const initialRequest = "Plan an interactive event with paired discussion and reflection.";
-const draftTitle = "Keep my carefully edited Guide event";
-const draftNotes = "Keep the accessible room and discussion cards.";
-const mocks = new WeakMap<Page, { qlooCalls: string[] }>();
-
-function proposal(bookId = "the-guide", eventTitle = "A controlled shared-reading evening"): EventProposal {
-  const book = SAMPLE_CATALOGUE.find((item) => item.id === bookId);
-  if (!book) throw new Error(`Unknown fixture book: ${bookId}`);
-  return {
-    selectedBookId: bookId,
-    eventTitle,
-    rationale: "Use the supplied audience evidence as a starting point for optional group discussion.",
-    evidenceRefs: [`affinity:${bookId}`],
-    agenda: [
-      { title: "Welcome", minutes: 10, activity: "Invite participants to share a reading preference." },
-      { title: "Paired discussion", minutes: 25, activity: "Offer open questions and let participants pass." },
-      { title: "Closing reflection", minutes: 10, activity: "Invite a voluntary final reflection." },
-    ],
-    materials: ["Blank cards", "Pens"],
-    invitation: "Join a relaxed book gathering with optional conversation and reflection.",
-    book: { ...book },
-    evidence: [{ id: `affinity:${bookId}`, bookId, kind: "affinity", value: 0.7 }],
-    coverage: { eligibleCount: 3, supportedCount: 2, assessedCount: 2 },
-    duration: 45,
-    interests: [...presetA.interests],
-    warnings: ["Controlled browser fixture: activities are proposed wording, not verified literary facts."],
-  };
+async function apply(page: Page) {
+  await page.getByRole("checkbox", { name: /I understand this is conditional/ }).check();
+  await page.getByRole("button", { name: "Apply proposal", exact: true }).click();
 }
+for (const kind of ["book", "artist", "movie", "place"] as CulturalKind[]) test(`${kind} journey generates directly, validates context and previews before explicit Apply`, async ({ page }) => {
+  let calls = 0;
+  await page.goto("/"); await configure(page, kind); await stubPlan(page, kind);
+  page.on("request", (request) => { if (request.url().includes("/api/club/plan")) calls++; });
+  await page.getByRole("button", { name: "Generate event proposal" }).click();
+  await expect(page.getByText("Agenda total: 45 minutes", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Apply proposal" })).toBeDisabled();
+  await page.getByText("Evidence, constraints and input context", { exact: true }).click();
+  await expect(page.locator(".club-evidence")).toContainText("astronomy and arts collective");
+  await expect(page.locator(".club-evidence")).toContainText("0.6");
+  await apply(page); await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(`A ${kind} gathering`);
+  expect(calls).toBe(1);
+});
 
-function proposalResponse(value = proposal()): EventAgentResponse {
-  return {
-    ok: true,
-    result: { status: "proposal", proposal: value },
-    trace: [
-      { action: "gemini", status: "completed", detail: "Controlled proposal fixture returned." },
-      { action: "rank_eligible_books", status: "completed", detail: "Controlled ranking evidence supplied." },
-      { action: "validation", status: "completed", detail: "Controlled proposal accepted for this browser journey." },
-    ],
-    usage: { geminiRequests: 2, qlooRequests: 1 },
-  };
-}
-
-function historicalDraft(value: EventProposal): ProposalDraft {
-  return {
-    selectedBookId: value.selectedBookId, eventTitle: value.eventTitle,
-    rationale: value.rationale, evidenceRefs: [...value.evidenceRefs],
-    agenda: value.agenda.map((item) => ({ ...item })),
-    materials: [...value.materials], invitation: value.invitation,
-  };
-}
-
-async function mockAgent(page: Page, handler?: (route: Route, body: EventAgentInput, index: number) => Promise<void>) {
-  const calls = { requests: [] as EventAgentInput[], qlooCalls: [] as string[], completed: 0 };
-  mocks.set(page, calls);
-  await page.route("**/api/qloo/**", async (route) => {
-    calls.qlooCalls.push(new URL(route.request().url()).pathname);
-    await route.fulfill({ status: 503, json: { ok: false, error: { code: "CONTROLLED_TEST", message: "Unexpected browser Qloo request blocked by the test." } } });
+test("applied context becomes historical even after changing back, preserving edits until explicit revised Apply", async ({ page }) => {
+  await page.goto("/"); await configure(page); await stubPlan(page);
+  await page.getByRole("button", { name: "Generate event proposal" }).click(); await apply(page);
+  await page.getByLabel("Event title", { exact: true }).fill("My edited event");
+  await page.getByLabel("Organizer notes", { exact: true }).fill("Keep the welcome activity");
+  await page.getByLabel("Group size", { exact: true }).fill("13"); await page.getByLabel("Group size", { exact: true }).fill("12");
+  await expect(page.getByText(/Based on previous inputs/)).toBeVisible();
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("My edited event");
+  let revision: ClubInput | undefined;
+  await page.route("**/api/club/plan", async (route) => {
+    revision = route.request().postDataJSON(); const updated = plan(revision!); updated.eventTitle = "Revised gathering";
+    await route.fulfill({ json: { ok: true, result: { status: "proposal", proposal: updated }, trace: [], usage: { geminiRequests: 2, qlooRequests: 1 } } });
   });
-  await page.route("**/api/event-agent", async (route) => {
-    expect(route.request().method()).toBe("POST");
-    const body = route.request().postDataJSON() as EventAgentInput;
-    calls.requests.push(body);
-    if (handler) await handler(route, body, calls.requests.length);
-    else await route.fulfill({ json: proposalResponse() });
-    calls.completed += 1;
+  await page.getByRole("button", { name: "Revise event proposal" }).click();
+  await expect(page.getByText("Revised gathering", { exact: true })).toBeVisible();
+  expect(revision?.mode).toBe("revise"); expect(revision?.previousPlan?.eventTitle).toBe("My edited event");
+  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue("Keep the welcome activity");
+  await apply(page); await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("Revised gathering");
+});
+
+test("pending duplicate prevention, cancellation and late result cannot replace existing edits", async ({ page }) => {
+  await page.goto("/"); await configure(page); await stubPlan(page);
+  await page.getByRole("button", { name: "Generate event proposal" }).click(); await apply(page);
+  await page.getByLabel("Event title", { exact: true }).fill("Keep this title");
+  let release!: () => void; let calls = 0;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/club/plan", async (route) => {
+    calls++; const input = route.request().postDataJSON(); await pending;
+    await route.fulfill({ json: { ok: true, result: { status: "proposal", proposal: plan(input) }, trace: [], usage: { geminiRequests: 2, qlooRequests: 1 } } }).catch(() => {});
   });
-  return calls;
-}
-
-test.afterEach(async ({ page }) => {
-  expect(mocks.get(page)?.qlooCalls ?? [], "The planner must not start separate browser Qloo calls").toEqual([]);
+  await page.getByRole("button", { name: "Generate event proposal" }).click();
+  await expect(page.getByRole("button", { name: "Planning…" })).toBeDisabled();
+  await expect(page.getByText("Waiting for a grounded proposal. Existing event edits are safe.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel request" }).click(); release();
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("Keep this title");
+  await expect(page.getByRole("button", { name: "Apply proposal" })).toHaveCount(0); expect(calls).toBe(1);
 });
 
-function planner(page: Page) {
-  return page.getByRole("region", { name: "Gemini event planner", exact: true });
-}
-
-function preview(page: Page) {
-  return page.getByRole("region", { name: "Event proposal preview", exact: true });
-}
-
-function shelf(page: Page) {
-  return page.getByRole("region", { name: /^Eligible books/ });
-}
-
-function outline(page: Page) {
-  return page.getByRole("region", { name: "Event outline", exact: true });
-}
-
-async function openExample(page: Page) {
-  await page.goto("/");
-  await expect(page).toHaveTitle(/^AfterHours/);
-  await expect(planner(page)).toBeVisible();
-  await page.getByRole("button", { name: "Load example", exact: true }).click();
-  await expect(shelf(page).getByRole("heading", { level: 3 })).toHaveText(["Malgudi Days", "The Blue Umbrella", "The Guide"]);
-}
-
-async function confirmPreset(page: Page) {
-  await page.getByRole("button", { name: presetA.label, exact: true }).click();
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-}
-
-async function makeGuideDraft(page: Page) {
-  await shelf(page).getByRole("button", { name: "Select: The Guide", exact: true }).click();
-  await page.getByLabel("Event title", { exact: true }).fill(draftTitle);
-  await page.getByLabel("Organizer notes", { exact: true }).fill(draftNotes);
-}
-
-async function expectGuideDraft(page: Page) {
-  await expect(shelf(page).getByRole("button", { name: "Selected: The Guide", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(draftTitle);
-  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue(draftNotes);
-}
-
-async function generate(page: Page) {
-  await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
-  await expect(preview(page)).toBeVisible();
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeEnabled();
-}
-
-function deferred() {
-  let resolve!: () => void;
-  const promise = new Promise<void>((done) => { resolve = done; });
-  return { promise, resolve };
-}
-
-test("Generate previews a different book without changing the selected book or edited outline", async ({ page }, testInfo) => {
-  const proposed = proposal("malgudi-days");
-  const calls = await mockAgent(page, async (route) => { await route.fulfill({ json: proposalResponse(proposed) }); });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-  await expect(page.getByRole("list", { name: "Confirmed interests", exact: true }).getByRole("listitem")).toHaveCount(2);
-  expect(calls.requests).toHaveLength(0);
-  await confirmPreset(page);
-  expect(calls.requests, "Confirming interests must not generate automatically").toHaveLength(0);
-  await generate(page);
-  await expect(preview(page).getByRole("heading", { name: "Malgudi Days", exact: true })).toBeVisible();
-  await expect(preview(page)).toContainText("Qloo affinity: 0.7");
-  await expect(preview(page)).toContainText("Gemini-proposed wording");
-  await expect(preview(page)).toContainText("replaces your selected book and all event-outline fields");
-  await expectGuideDraft(page);
-  expect(calls.requests).toEqual([{
-    catalogueSource: "sample", filters: { maxPrice: "450", maxPages: "300", languages: ["English"] },
-    interests: presetA.interests.map((interest) => interest.reference),
-    request: initialRequest, duration: 45, mode: "generate",
-  }]);
-  const screenshotPath = testInfo.outputPath("event-proposal-workspace-desktop.png");
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  await testInfo.attach("Controlled event proposal and preserved outline on desktop", { path: screenshotPath, contentType: "image/png" });
+test("input changes reject stale responses and switching back cannot revive an unapplied proposal", async ({ page }) => {
+  await page.goto("/"); await configure(page);
+  let release!: () => void; const pending = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/club/plan", async (route) => { const input = route.request().postDataJSON(); await pending; await route.fulfill({ json: { ok: true, result: { status: "proposal", proposal: plan(input) }, trace: [], usage: { geminiRequests: 2, qlooRequests: 1 } } }).catch(() => {}); });
+  await page.getByRole("button", { name: "Generate event proposal" }).click();
+  await page.getByLabel("Duration (minutes)", { exact: true }).fill("60"); await page.getByLabel("Duration (minutes)", { exact: true }).fill("45"); release();
+  await expect(page.getByRole("button", { name: "Generate event proposal" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Apply proposal" })).toHaveCount(0);
 });
 
-test("only Apply changes selection and populates the proposal fields", async ({ page }) => {
-  const proposed = proposal("malgudi-days");
-  const calls = await mockAgent(page, async (route) => { await route.fulfill({ json: proposalResponse(proposed) }); });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await generate(page);
-  await expectGuideDraft(page);
-  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-  await expect(shelf(page).getByRole("button", { name: "Selected: Malgudi Days", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(outline(page).getByRole("heading", { name: "Malgudi Days", exact: true })).toBeVisible();
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(proposed.eventTitle);
-  await expect(page.getByLabel("Running order", { exact: true })).toHaveValue(proposed.agenda.map((item) => `${item.title} — ${item.minutes} minutes\n${item.activity}`).join("\n\n"));
-  await expect(page.getByLabel("Materials", { exact: true })).toHaveValue("Blank cards\nPens");
-  await expect(page.getByLabel("Invitation", { exact: true })).toHaveValue(proposed.invitation);
-  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue("");
-  await expect(outline(page)).toContainText("Gemini proposal · editable");
-  expect(calls.requests).toHaveLength(1);
-});
-
-test("Apply replaces an edited draft even when the proposal keeps the same selected book", async ({ page }) => {
-  const calls = await mockAgent(page);
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await generate(page);
-  await expectGuideDraft(page);
-  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-  await expect(shelf(page).getByRole("button", { name: "Selected: The Guide", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(proposal().eventTitle);
-  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue("");
-  await page.getByLabel("Event title", { exact: true }).fill("A subsequent manual edit");
-  await page.getByLabel("Materials", { exact: true }).fill("Edited materials");
-  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(proposal().eventTitle);
-  await expect(page.getByLabel("Materials", { exact: true })).toHaveValue("Blank cards\nPens");
-  expect(calls.requests, "Applying locally must not generate another proposal").toHaveLength(1);
-});
-
-for (const change of ["filters", "audience"] as const) {
-  test(`applied evidence and all edits survive ${change} changes and returning to the previous inputs`, async ({ page }, testInfo) => {
-    const proposed = proposal();
-    const contribution = {
-      id: `contribution:the-guide:${presetA.interests[0].entityId}`, bookId: "the-guide",
-      kind: "contribution" as const, value: 0.6123456789,
-      interestId: presetA.interests[0].entityId, interestName: presetA.interests[0].name,
-    };
-    proposed.evidence.push(contribution);
-    proposed.evidenceRefs.push(contribution.id);
-    const calls = await mockAgent(page, async (route) => { await route.fulfill({ json: proposalResponse(proposed) }); });
-    await openExample(page);
-    await generate(page);
-    await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-    const context = outline(page).getByRole("region", { name: "Applied event context", exact: true });
-    await expect(context).toBeVisible();
-    await expect(context).toContainText("Amélie (2001)");
-    await expect(context).toContainText("Norah Jones");
-    await expect(context).toContainText("Qloo assessed 2 of 3 eligible books; 2 had reviewed mappings.");
-    await expect(context.getByRole("status")).toHaveCount(0);
-    await context.getByText("Applied filters and numerical evidence", { exact: true }).click();
-    await expect(context).toContainText("Maximum ₹450 per copy");
-    await expect(context).toContainText("Maximum 300 pages");
-    await expect(context).toContainText("Languages: English");
-    await expect(context).toContainText("Qloo affinity: 0.7");
-    await expect(context).toContainText("Input contribution: Amélie: 0.6123456789");
-    await expect(context).toContainText(contribution.id);
-    await expect(context).toContainText(proposed.warnings[0]);
-    const edits = {
-      "Event title": "Keep this applied event title",
-      "Running order": "My own edited running order",
-      "Discussion prompts": "An organizer's optional question",
-      "Materials": "Large-print cards and pencils",
-      "Invitation": "My reviewed invitation wording",
-      "Organizer notes": "Keep accessible seating and quiet space",
-    };
-    for (const [label, value] of Object.entries(edits)) await page.getByLabel(label, { exact: true }).fill(value);
-    await page.getByText("Optional audience notes", { exact: true }).click();
-    await page.getByLabel("Books", { exact: true }).fill("Notes do not affect this applied context");
-    await expect(context.getByRole("status")).toHaveCount(0);
-    if (change === "filters") {
-      await page.getByLabel("Max price per copy", { exact: true }).fill("400");
-    } else {
-      await page.getByRole("button", { name: presetB.label, exact: true }).click();
-      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toContainText("Interstellar (2014)");
-      await expect(context).not.toContainText("Interstellar");
-    }
-    await expect(context.getByRole("status")).toContainText("Based on previous inputs.");
-    for (const [label, value] of Object.entries(edits)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
-    await expect(context).toContainText("Maximum ₹450 per copy");
-    await expect(context).toContainText("Qloo assessed 2 of 3 eligible books");
-    if (change === "filters") await page.getByLabel("Max price per copy", { exact: true }).fill("450");
-    else await page.getByRole("button", { name: presetA.label, exact: true }).click();
-    await expect(context.getByRole("status")).toContainText("Based on previous inputs.");
-    for (const [label, value] of Object.entries(edits)) await expect(page.getByLabel(label, { exact: true })).toHaveValue(value);
-    const currentProposal = context.getByRole("link", { name: "Generate a current proposal", exact: true });
-    await tabTo(page, currentProposal);
-    await expectKeyboardFocus(currentProposal);
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/#event-planner$/);
-    await expect(planner(page).getByRole("heading", { name: "Gemini event planner", exact: true })).toBeInViewport();
-    expect(calls.requests, "Input edits and the navigation link must never regenerate").toHaveLength(1);
-    await page.setViewportSize({ width: 390, height: 844 });
-    const screenshotPath = testInfo.outputPath(`applied-event-context-${change}-390.png`);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    await testInfo.attach("Applied evidence, previous-input notice and preserved edited outline at 390px", { path: screenshotPath, contentType: "image/png" });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= 390 && document.body.scrollWidth <= 390)).toBe(true);
-    const clipping = await context.locator("p, li, code, summary, a").evaluateAll((elements) => elements.flatMap((element) => {
-      const rect = element.getBoundingClientRect();
-      return rect.width && rect.height && (rect.left < -1 || rect.right > 391 || element.scrollWidth > element.clientWidth + 1) ? [element.textContent?.trim()] : [];
-    }));
-    expect(clipping, "Applied interests, numerical values, UUID references, warnings and links must fit at 390px").toEqual([]);
-  });
-}
-
-test("applied context survives cancelled import and clears on replacement or book invalidation", async ({ page }) => {
-  const calls = await mockAgent(page);
-  await openExample(page);
-  await generate(page);
-  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-  const context = outline(page).getByRole("region", { name: "Applied event context", exact: true });
-  await page.getByLabel("Event title", { exact: true }).fill("Keep my applied draft");
-  const csv = { name: "context-import.csv", mimeType: "text/csv", buffer: Buffer.from("title,author,price_inr,pages,language,stock\nLocal Book,Test Author,100,50,English,2\n") };
-  await page.getByLabel("Choose catalogue CSV", { exact: true }).setInputFiles(csv);
-  await page.getByRole("button", { name: "Cancel import", exact: true }).click();
-  await expect(context).toBeVisible();
-  await expect(context.getByRole("status")).toHaveCount(0);
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("Keep my applied draft");
-  await page.getByLabel("Choose catalogue CSV", { exact: true }).setInputFiles(csv);
-  await page.getByRole("button", { name: "Replace catalogue", exact: true }).click();
-  await expect(context).toHaveCount(0);
-  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-  await expect(page.getByRole("list", { name: "Confirmed interests", exact: true }).getByRole("listitem")).toHaveCount(2);
-  await page.getByRole("button", { name: "Restore sample catalogue", exact: true }).click();
-  await generate(page);
-  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-  await expect(context).toBeVisible();
-  await page.getByLabel("Max price per copy", { exact: true }).fill("100");
-  await expect(context).toHaveCount(0);
-  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-  expect(calls.requests).toHaveLength(2);
-});
-
-test("Revise uses current filters and a historical proposal while preserving the current draft until Apply", async ({ page }) => {
-  const first = proposal("malgudi-days", "The earlier proposed gathering");
-  const revised = proposal("the-guide", "A newly revised gathering");
-  revised.coverage = { eligibleCount: 2, supportedCount: 1, assessedCount: 1 };
-  const calls = await mockAgent(page, async (route, _body, index) => { await route.fulfill({ json: proposalResponse(index === 1 ? first : revised) }); });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await generate(page);
-  await page.getByLabel("Max price per copy", { exact: true }).fill("300");
-  await expect(preview(page).getByRole("status")).toContainText("This preview is stale.");
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
-  await expectGuideDraft(page);
-  const request = "Revise the event for my current limits and preserve optional paired discussion.";
-  await planner(page).getByLabel("Event request", { exact: true }).fill(request);
-  expect(calls.requests).toHaveLength(1);
-  await planner(page).getByRole("button", { name: "Revise proposal", exact: true }).click();
-  await expect(preview(page).getByRole("heading", { name: revised.eventTitle, exact: true })).toBeVisible();
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeEnabled();
-  expect(calls.requests[1]).toEqual({
-    catalogueSource: "sample", filters: { maxPrice: "300", maxPages: "300", languages: ["English"] },
-    interests: presetA.interests.map((interest) => interest.reference), request, duration: 45,
-    mode: "revise", previousProposal: historicalDraft(first),
-  });
-  await expectGuideDraft(page);
-  await preview(page).getByRole("button", { name: "Apply proposal", exact: true }).click();
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(revised.eventTitle);
-  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue("");
-  expect(calls.requests).toHaveLength(2);
-});
-
-for (const error of [
-  { status: 503, code: "NOT_CONFIGURED", message: "Gemini credentials are not configured on this server." },
-  { status: 502, code: "GEMINI_REQUEST_REJECTED", message: "Gemini rejected this request. Check the API key's access, model configuration, and supported request settings before trying again." },
-  { status: 502, code: "INVALID_PROPOSAL", message: "The proposal agenda did not meet the validated event duration. No proposal was accepted." },
-  { status: 502, code: "INVALID_PROPOSAL", message: "The proposed book did not belong to the eligible ranked inventory. No proposal was accepted." },
-]) {
-  test(`${error.code}: ${error.message}`, async ({ page }) => {
-    const calls = await mockAgent(page, async (route) => { await route.fulfill({ status: error.status, json: { ok: false, error: { code: error.code, message: error.message }, trace: [], usage: { geminiRequests: 0, qlooRequests: 0 } } satisfies EventAgentResponse }); });
-    await openExample(page);
-    await makeGuideDraft(page);
-    await confirmPreset(page);
-    await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
-    await expect(planner(page).getByRole("alert")).toHaveText(error.message);
-    await expect(preview(page)).toHaveCount(0);
-    await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-    await expectGuideDraft(page);
-    expect(calls.requests, "A failed provider request must not be retried or replaced automatically").toHaveLength(1);
-  });
-}
-
-test("clarification asks for organizer input without generating a fallback proposal or replacing the draft", async ({ page }) => {
-  const question = "Would you prefer paired discussion or a whole-group activity?";
-  const calls = await mockAgent(page, async (route) => { await route.fulfill({ json: {
-    ok: true, result: { status: "clarification", question }, trace: [], usage: { geminiRequests: 1, qlooRequests: 0 },
-  } satisfies EventAgentResponse }); });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
-  await expect(planner(page).getByRole("heading", { name: "Clarification needed", exact: true })).toBeVisible();
-  await expect(planner(page)).toContainText(question);
-  await expect(preview(page)).toHaveCount(0);
-  await expectGuideDraft(page);
-  expect(calls.requests).toHaveLength(1);
-});
-
-test("pending generation permits one call, Cancel releases the UI, and a late response cannot replace a newer preview", async ({ page }) => {
-  const pending = deferred();
-  const calls = await mockAgent(page, async (route, _body, index) => {
-    if (index === 1) await pending.promise;
-    await route.fulfill({ json: proposalResponse(proposal("the-guide", index === 1 ? "The cancelled old proposal" : "The current proposal")) });
-  });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
-  await expect.poll(() => calls.requests.length).toBe(1);
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
-  await expect(planner(page).getByRole("button", { name: "Revise proposal", exact: true })).toBeDisabled();
-  await expect(planner(page).getByRole("status")).toHaveText("Preparing proposal…");
-  await page.keyboard.press("Enter");
-  expect(calls.requests).toHaveLength(1);
-  await planner(page).getByRole("button", { name: "Cancel generation", exact: true }).click();
-  await expect(planner(page).getByRole("status")).toContainText("Generation cancelled locally.");
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-  await generate(page);
-  await expect(preview(page).getByRole("heading", { name: "The current proposal", exact: true })).toBeVisible();
-  pending.resolve();
-  await expect.poll(() => calls.completed).toBe(2);
-  await expect(preview(page)).not.toContainText("The cancelled old proposal");
-  await expect(preview(page).getByRole("heading", { name: "The current proposal", exact: true })).toBeVisible();
-  await expectGuideDraft(page);
-  expect(calls.requests).toHaveLength(2);
-});
-
-test("a pending regeneration shows loading immediately and a deadline failure preserves edits without reviving Apply", async ({ page }) => {
-  const pending = deferred();
-  const message = "The planning run reached its overall deadline. No proposal was applied.";
-  const calls = await mockAgent(page, async (route, _body, index) => {
-    if (index === 1) {
-      await route.fulfill({ json: proposalResponse() });
-      return;
-    }
-    await pending.promise;
-    await route.fulfill({ status: 504, json: {
-      ok: false, error: { code: "RUN_TIMEOUT", message },
-      trace: [{ action: "gemini", status: "failed", detail: "The run deadline ended this controlled test." }],
-      usage: { geminiRequests: 1, qlooRequests: 0 },
-    } satisfies EventAgentResponse });
-  });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await generate(page);
-  await planner(page).getByRole("button", { name: "Generate proposal", exact: true }).click();
-  await expect(planner(page).getByRole("status").filter({ hasText: /^Preparing proposal/ })).toBeVisible();
-  await expect(planner(page).getByRole("button", { name: "Cancel generation", exact: true })).toBeEnabled();
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
-  await expect(planner(page).getByRole("button", { name: "Revise proposal", exact: true })).toBeDisabled();
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
-  await expectGuideDraft(page);
-  const pendingNotes = `${draftNotes} Edited while waiting.`;
-  await page.getByLabel("Organizer notes", { exact: true }).fill(pendingNotes);
-  await expect.poll(() => calls.requests.length).toBe(2);
-  // Enter edits the focused textarea; it must not submit another generation.
-  await page.keyboard.press("Enter");
-  expect(calls.requests).toHaveLength(2);
-  pending.resolve();
-  await expect(planner(page).getByRole("alert")).toHaveText(message);
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-  await expect(planner(page).getByRole("button", { name: "Cancel generation", exact: true })).toHaveCount(0);
-  await expect(preview(page).getByRole("status")).toContainText("This preview is stale.");
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
-  await expect(shelf(page).getByRole("button", { name: "Selected: The Guide", exact: true })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue(draftTitle);
-  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue(`${pendingNotes}\n`);
-  expect(calls.requests, "The failed attempt must neither retry nor reactivate the previous proposal").toHaveLength(2);
-});
-
-for (const context of ["filters", "interests", "request", "duration"] as const) {
-  test(`${context} A-to-B-to-A changes never revive an old proposal's Apply action`, async ({ page }) => {
-    const calls = await mockAgent(page);
-    await openExample(page);
-    await makeGuideDraft(page);
-    await confirmPreset(page);
-    await generate(page);
-    if (context === "filters") {
-      await page.getByLabel("Max price per copy", { exact: true }).fill("400");
-      await page.getByLabel("Max price per copy", { exact: true }).fill("450");
-    } else if (context === "interests") {
-      await page.getByRole("button", { name: presetB.label, exact: true }).click();
-      await page.getByRole("button", { name: presetA.label, exact: true }).click();
-    } else if (context === "request") {
-      await planner(page).getByLabel("Event request", { exact: true }).fill("Use a different format for this event.");
-      await planner(page).getByLabel("Event request", { exact: true }).fill(initialRequest);
-    } else {
-      await planner(page).getByLabel("Event duration (minutes)", { exact: true }).fill("60");
-      await planner(page).getByLabel("Event duration (minutes)", { exact: true }).fill("45");
-    }
-    await expect(preview(page).getByRole("status")).toContainText("This preview is stale.");
-    await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
-    await expectGuideDraft(page);
-    expect(calls.requests, "Context changes alone must never generate").toHaveLength(1);
-  });
-}
-
-for (const action of ["Reset", "Load example"]) {
-  test(`${action} clears proposal state and outline and restores its intended audience state`, async ({ page }) => {
-    const calls = await mockAgent(page);
-    await openExample(page);
-    await makeGuideDraft(page);
-    await confirmPreset(page);
-    await generate(page);
-    await planner(page).getByLabel("Event request", { exact: true }).fill("Replace the current request temporarily.");
-    await planner(page).getByLabel("Event duration (minutes)", { exact: true }).fill("60");
-    await page.getByRole("button", { name: action, exact: true }).click();
-    await expect(preview(page)).toHaveCount(0);
-    await expect(planner(page).getByLabel("Event request", { exact: true })).toHaveValue(initialRequest);
-    await expect(planner(page).getByLabel("Event duration (minutes)", { exact: true })).toHaveValue("45");
-    if (action === "Reset") {
-      await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
-      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toHaveCount(0);
-    } else {
-      await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true }).getByRole("listitem")).toHaveCount(2);
-      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toContainText("Amélie (2001)");
-      await expect(page.getByRole("list", { name: "Confirmed interests", exact: true })).toContainText("Norah Jones");
-    }
-    await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-    await expect(shelf(page).getByRole("button", { pressed: true })).toHaveCount(0);
-    expect(calls.requests).toHaveLength(1);
-  });
-}
-
-test("CSV cancellation preserves the preview and draft; confirmed import and sample restoration never apply a stale proposal", async ({ page }) => {
-  const calls = await mockAgent(page, async (route, _body, index) => { await route.fulfill({ json: proposalResponse(proposal("the-guide", index === 1 ? "Before catalogue replacement" : "A fresh restored-sample proposal")) }); });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await generate(page);
-  const csv = { name: "controlled-local-inventory.csv", mimeType: "text/csv", buffer: Buffer.from("title,author,price_inr,pages,language,stock\nLocal Evening,Test Writer,120,80,English,3\n") };
-  await page.getByLabel("Choose catalogue CSV", { exact: true }).setInputFiles(csv);
-  await page.getByRole("button", { name: "Cancel import", exact: true }).click();
-  await expect(preview(page).getByRole("heading", { name: "Before catalogue replacement", exact: true })).toBeVisible();
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeEnabled();
-  await expectGuideDraft(page);
-  await page.getByLabel("Choose catalogue CSV", { exact: true }).setInputFiles(csv);
-  await page.getByRole("button", { name: "Replace catalogue", exact: true }).click();
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeDisabled();
-  await expect(planner(page).getByRole("button", { name: "Revise proposal", exact: true })).toBeDisabled();
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
-  await expect(preview(page).getByRole("status")).toContainText("This preview is stale.");
-  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-  await expect(planner(page).getByLabel("Event request", { exact: true })).toBeDisabled();
-  expect(calls.requests).toHaveLength(1);
-  await shelf(page).getByRole("button", { name: "Select: Local Evening", exact: true }).click();
-  await page.getByLabel("Organizer notes", { exact: true }).fill("Local templates still work.");
-  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("An evening with Local Evening");
-  await page.getByRole("button", { name: "Restore sample catalogue", exact: true }).click();
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-  await expect(preview(page).getByRole("button", { name: "Apply proposal", exact: true })).toBeDisabled();
-  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-  expect(calls.requests).toHaveLength(1);
-  await generate(page);
-  await expect(preview(page).getByRole("heading", { name: "A fresh restored-sample proposal", exact: true })).toBeVisible();
-  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-  expect(calls.requests).toHaveLength(2);
-});
-
-test("390px proposal preview, eligible shelf, and selected outline fit without horizontal overflow", async ({ page }, testInfo) => {
-  const calls = await mockAgent(page);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await openExample(page);
-  await makeGuideDraft(page);
-  await confirmPreset(page);
-  await generate(page);
-  const screenshotPath = testInfo.outputPath("event-proposal-workspace-mobile-390.png");
-  await page.screenshot({ path: screenshotPath, fullPage: true });
-  await testInfo.attach("Controlled event proposal, eligible books, and selected outline at 390px", { path: screenshotPath, contentType: "image/png" });
-  const widths = await page.evaluate(() => ({ viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
-  expect(widths.viewport).toBe(390);
-  expect(widths.document, "Proposal workspace must not scroll horizontally").toBeLessThanOrEqual(390);
-  expect(widths.body).toBeLessThanOrEqual(390);
-  const controls = page.getByRole("main").getByRole("button")
-    .or(page.getByRole("main").getByRole("textbox"))
-    .or(page.getByRole("main").getByRole("spinbutton"))
-    .or(page.getByRole("main").getByRole("combobox"))
-    .or(page.getByRole("main").getByRole("checkbox"));
-  const issues = await controls.evaluateAll((elements) => elements.flatMap((element) => {
-    const rect = element.getBoundingClientRect();
-    if (!rect.width || !rect.height) return [];
-    const name = element.getAttribute("aria-label") || element.id || element.textContent?.trim() || element.tagName;
-    const problems: string[] = [];
-    if (rect.left < -1 || rect.right > 391) problems.push(`${name}: outside viewport`);
-    if (element.scrollWidth > element.clientWidth + 1) problems.push(`${name}: content clipped`);
-    return problems;
-  }));
-  expect(issues, "Planner, matching, filter, and outline controls must fit at 390px").toEqual([]);
-  await expect(preview(page)).toContainText("Qloo affinity: 0.7");
-  await expect(shelf(page).getByRole("listitem")).toHaveCount(3);
-  await expectGuideDraft(page);
-  expect(calls.requests).toHaveLength(1);
-});
-
-test("real keyboard navigation confirms interests, generates and applies a preview, then edits the outline", async ({ page }) => {
-  const calls = await mockAgent(page);
-  await openExample(page);
-  const english = page.getByRole("checkbox", { name: "English", exact: true });
-  await tabTo(page, english);
-  await expectKeyboardFocus(english);
-  await page.keyboard.press("Space");
-  await expect(english).not.toBeChecked();
-  await page.keyboard.press("Space");
-  await expect(english).toBeChecked();
-  const preset = page.getByRole("button", { name: presetA.label, exact: true });
-  await tabTo(page, preset);
-  await expectKeyboardFocus(preset);
-  await page.keyboard.press("Enter");
-  await expect(planner(page).getByRole("button", { name: "Generate proposal", exact: true })).toBeEnabled();
-  const request = planner(page).getByLabel("Event request", { exact: true });
-  await tabTo(page, request);
-  await expectKeyboardFocus(request);
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.type("Plan a welcoming event with optional paired discussion.");
-  const duration = planner(page).getByLabel("Event duration (minutes)", { exact: true });
-  await tabTo(page, duration);
-  await expectKeyboardFocus(duration);
-  const generateButton = planner(page).getByRole("button", { name: "Generate proposal", exact: true });
-  await tabTo(page, generateButton);
-  await expectKeyboardFocus(generateButton);
-  await page.keyboard.press("Enter");
-  await expect(preview(page)).toBeVisible();
-  await expect(outline(page).getByRole("textbox")).toHaveCount(0);
-  const apply = preview(page).getByRole("button", { name: "Apply proposal", exact: true });
-  await tabTo(page, apply);
-  await expectKeyboardFocus(apply);
-  await page.keyboard.press("Enter");
-  const title = page.getByLabel("Event title", { exact: true });
-  await tabTo(page, title);
-  await expectKeyboardFocus(title);
-  await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.type("A keyboard-applied evening");
-  const notes = page.getByLabel("Organizer notes", { exact: true });
-  await tabTo(page, notes);
-  await expectKeyboardFocus(notes);
-  await page.keyboard.type("Bring accessible discussion cards.");
-  await expect(title).toHaveValue("A keyboard-applied evening");
-  await expect(notes).toHaveValue("Bring accessible discussion cards.");
-  await expect(shelf(page).getByRole("button", { name: "Selected: The Guide", exact: true })).toHaveAttribute("aria-pressed", "true");
-  expect(calls.requests).toHaveLength(1);
-  expect(calls.requests[0].request).toBe("Plan a welcoming event with optional paired discussion.");
-});
-
-async function tabTo(page: Page, target: Locator) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
-    await page.keyboard.press("Tab");
-    if (await target.evaluate((element) => element === element.ownerDocument.activeElement)) return;
+test("390px cards, proposal evidence and applied fields stay readable without horizontal overflow", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto("/"); await configure(page, "movie"); await stubPlan(page, "movie");
+  await page.getByRole("button", { name: "Generate event proposal" }).click();
+  await expect(page.locator(".club-candidate")).toBeVisible(); await apply(page);
+  await page.locator("#event-outline").getByText("Evidence, constraints and input context", { exact: true }).click();
+  const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
+  expect(dimensions.document).toBeLessThanOrEqual(390); expect(dimensions.body).toBeLessThanOrEqual(390);
+  for (const label of ["Event title", "Organizer notes", "Invitation"]) {
+    const box = await page.getByLabel(label, { exact: true }).boundingBox(); expect(box!.width).toBeGreaterThan(250); expect(box!.x + box!.width).toBeLessThanOrEqual(390);
   }
-  await expect(target, "Control must be reachable using the real Tab order").toBeFocused();
-}
+  await page.screenshot({ path: "artifacts/playwright/adaptive-club-mobile-390.png", fullPage: true });
+});
 
-async function expectKeyboardFocus(target: Locator) {
-  await expect(target).toBeFocused();
-  await expect(target).toBeInViewport();
-  const focus = await target.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { visible: element.matches(":focus-visible"), style: style.outlineStyle, width: Number.parseFloat(style.outlineWidth), color: style.outlineColor };
+test("audience and practical-constraint revision stays fresh, preserves edits until Apply and downloads the applied current plan", async ({ page }) => {
+  const requests: ClubInput[] = [];
+  await page.route("**/api/club/plan", async (route) => {
+    const input = route.request().postDataJSON() as ClubInput; requests.push(input);
+    const proposal = plan(input); proposal.eventTitle = requests.length === 1 ? "Initial gathering" : "Revised gathering";
+    proposal.discovery.interests = input.interests.flatMap((reference) => {
+      if (!("preset" in reference)) return [];
+      const interest = QLOO_PRESETS.find((preset) => preset.id === reference.preset)?.interests[reference.index];
+      return interest ? [{ ...interest, metadata: {} }] : [];
+    });
+    await route.fulfill({ json: { ok: true, result: { status: "proposal", proposal }, trace: [], usage: { geminiRequests: 2, qlooRequests: 1 } } });
   });
-  expect(focus.visible).toBe(true);
-  expect(focus.style).not.toBe("none");
-  expect(focus.width).toBeGreaterThanOrEqual(2);
-  expect(focus.color).not.toBe("rgba(0, 0, 0, 0)");
-}
+  await page.goto("/"); await page.getByRole("button", { name: "Try an example", exact: true }).click();
+  await page.getByRole("button", { name: "Generate event proposal", exact: true }).click(); await apply(page);
+  await page.getByLabel("Event title", { exact: true }).fill("Keep my edited title until Apply");
+  await page.getByLabel("Organizer notes", { exact: true }).fill("Keep these current notes");
+  await page.getByRole("button", { name: "Remove Amélie", exact: true }).click(); await page.getByRole("button", { name: "Remove Norah Jones", exact: true }).click();
+  for (const name of [/Interstellar/, /Hans Zimmer/]) {
+    await page.getByRole("combobox", { name: "Audience interests" }).click(); await page.getByRole("listbox", { name: "Reviewed interest examples" }).getByRole("option", { name }).click();
+  }
+  await page.getByText("Budget and relevant constraints (optional)", { exact: true }).click(); await page.getByLabel("Budget (optional)", { exact: true }).fill("300");
+  await expect(page.getByText(/Based on previous inputs/)).toBeVisible();
+  await page.getByRole("button", { name: "Revise event proposal", exact: true }).click();
+  await expect(page.getByText("Revised gathering", { exact: true })).toBeVisible();
+  expect(requests).toHaveLength(2); expect(requests[1].interests).toEqual([{ preset: "b", index: 0 }, { preset: "b", index: 1 }]); expect(requests[1].budget?.amount).toBe(300);
+  expect(requests[1].selected).toEqual({ sample: "the-guide" }); expect(requests[1].previousPlan?.eventTitle).toBe("Keep my edited title until Apply");
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("Keep my edited title until Apply"); await apply(page);
+  await expect(page.getByLabel("Event title", { exact: true })).toHaveValue("Revised gathering");
+  await expect(page.getByLabel("Organizer notes", { exact: true })).toHaveValue("Keep these current notes");
+  const pending = page.waitForEvent("download"); await page.getByRole("button", { name: "Download event plan", exact: true }).click();
+  const downloaded = await pending; expect(await downloaded.failure()).toBeNull();
+  const markdown = await readFile((await downloaded.path())!, "utf8");
+  for (const text of ["Revised gathering", "Keep these current notes", "Interstellar", "Hans Zimmer", "Budget: INR 300", "affinity:"]) expect(markdown).toContain(text);
+  expect(markdown).not.toContain("Historical context — based on previous inputs"); expect(requests).toHaveLength(2);
+});
