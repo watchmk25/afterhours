@@ -4,6 +4,8 @@ This feature branch changes the starting product from a sample-book inventory to
 
 Production is unchanged by this work. Initial local completion used **zero live Gemini, Qloo or Redis requests**. Controlled responses establish request construction, validation and browser behavior; they do not establish new live upstream compatibility, recommendation quality or provider capacity. The separately authorized protected hosted follow-up is recorded below.
 
+**Latest result — 30 October 2026:** one protected unrestricted-book generation, explicit Apply and edited-plan download **passed live** on `12c123511d060611de7c209f81c3db23829daf1a`, using two Gemini requests and one Qloo Insights request, rendering in 13.209 seconds. The readable branch switch was restored to false, a fresh protected paused replacement was verified and only the temporary enabled test deployment was removed. Other formats and shortlist flows remain live unverified; Production still runs the earlier workspace. Details and the earlier failed configuration attempt are kept separate below.
+
 ## Implemented contract
 
 - Fresh workspaces have no inventory requirement and do not render the ten sample books. **Try an example** deliberately loads the existing reviewed Example A interests, book constraints and illustrative inventory without a provider call.
@@ -82,7 +84,7 @@ The previous smoke/feasibility diagnostics and legacy sample-domain modules rema
 
 Priorities follow the event's [published judging criteria](https://qloo.devpost.com/) and externally published functional-demo requirement; these are readiness judgments, not claims of recommendation quality.
 
-1. **Technological Implementation / functional demo:** the expanded contract is checkpointed and its protected hosted controlled suite passes. Its one authorized live generation attempt stopped at the operator pause gate with zero provider calls; native adaptive live acceptance remains unverified below. Public Production still demonstrates the older accepted book workspace. Controlled tests cannot establish current mixed-search/Insights response variations, Gemini compatibility, account access, live timing or shared-store availability for this new source.
+1. **Technological Implementation / functional demo:** the expanded contract is checkpointed and its protected hosted controlled suite passes. A separately authorized unrestricted-book native generation, Apply and edited download passed live after the switch correction below. Public Production still demonstrates the older accepted book workspace. Mixed search, artist/movie/place discovery, shortlist flows and sustained provider/store availability remain live unverified for this new source. Publication of the adaptive implementation requires a separate release review; this task did not merge or change Production.
 2. **Potential Impact / Quality of the Idea:** no new evidence establishes organizer adoption or recommendation quality. Earlier A/B evidence changed scores without changing ordering. The current offline tests establish signal/candidate/evidence plumbing; they do not demonstrate better recommendations or guarantee a changed selection.
 3. **Design / practical feasibility:** sample data remains illustrative, reviewed sample mappings are five of ten, and imported identities require organizer confirmation. Unknown costs, availability, rights and musician identity remain conditional. Automatic routing uses conservative English goal cues and asks for a primary focus when unclear; prose validation cannot prove every generated sentence factual. Workspace content is session-only; Markdown export currently covers book plans.
 4. **Demo capacity:** twelve searches per visitor/hour can be exhausted through exploration or a five-row resolution batch. Existing shared quotas, provider TPM and image CORS/availability remain operational limits rather than evidence of sustained reliability.
@@ -112,17 +114,64 @@ Ignored evidence: `artifacts/playwright/adaptive-initial-pause.json`, `adaptive-
 
 ## Switch-status correction and new acceptance allowance — 30 October 2026
 
-This follow-up has a **new, separate allowance of one UI Generate attempt**, at most three Gemini requests and one Qloo Insights request. The earlier stopped attempt and its zero-provider evidence remain historical; it is not replayed or relabelled as success.
+This follow-up was granted a **new, separate allowance of one UI Generate attempt**, at most three Gemini requests and one Qloo Insights request, and used it once as recorded below. The earlier stopped attempt and its zero-provider evidence remain historical; it is not replayed or relabelled as success.
 
 The configuration audit found the correct `sam-3b2d/afterhours` project, exact `feat/adaptive-club-planner` Preview scope, one switch for that scope, no generic Preview switch and no linked shared-variable override. Existing Production and `feat/event-agent` settings were preserved. No tracked real environment file, `next.config.ts` environment definition or deployment environment override was found. The old switch was a write-only Secret: its original literal cannot be recovered, so quotes, whitespace and an older deployment snapshot remain hypotheses, not established causes. The actual historical failure establishes only that its runtime value was not exactly `"true"`.
 
-[Vercel's current Config/Secret documentation](https://vercel.com/docs/environment-variables/sensitive-environment-variables) establishes why the previous type edits failed: a saved Secret cannot be converted to Config in place. Only the adaptive branch's non-secret switch was removed and recreated as **Config**, with exact literal **`false`** using the supported CLI value option and structured provider update. Readback confirmed the exact string, Config visibility and Preview/branch scope. The CLI reported an error for the successful deletion; a read-only inventory established absence before creation, so the deletion was not repeated. No credentials, model setting, shared/team policy, Production value or other branch setting was changed.
+[Vercel's current Config/Secret documentation](https://vercel.com/docs/environment-variables/sensitive-environment-variables) establishes that the earlier in-place conversion was unsupported: a saved Secret cannot be converted to Config. The historical CLI error detail was not retained, so no more specific error cause is claimed. Only the adaptive branch's non-secret switch was removed and recreated as **Config**, with exact literal **`false`** using the supported CLI value option and structured provider update. Readback confirmed the exact string, Config visibility and Preview/branch scope. The CLI reported an error for the successful deletion; a read-only inventory established absence before creation, so the deletion was not repeated. No credentials, model setting, shared/team policy, Production value or other branch setting was changed.
 
 `GET /api/preview/switch-status` is a small server diagnostic, **switch status only, not provider readiness**. It returns only `liveEnabled` and a valid public `sourceCommit` when available; outside the actual Preview environment it returns 404. It awaits the installed Next.js request-time `connection()` API and uses browser/CDN no-store headers. It imports no provider/store implementation, makes no requests and reserves no allowance. The route and admission gate call the same server-only `liveWorkEnabled()` evaluator, preserving exact-string, fail-closed semantics and request-time reads. No public test/authentication bypass, client identity header or custom runtime flag was introduced.
 
 Verification before deployment: **31/31 focused Node switch/admission/route checks passed** with controlled transports and zero live calls. The three new status checks were rerun after explicitly setting their synthetic child environment to `test`; **3/3 passed**. Missing/false, accidental quotes, whitespace and uppercase remain disabled; exact true passes only the switch, not missing identity/store admission. Status is Preview-only, source output is bounded, repeated calls reflect current values, responses are uncached and synthetic credentials stay absent. Lint, TypeScript, production build and `git diff --check` passed. The build marks the new route dynamic (`ƒ`). The earlier 44/44 hosted controlled browser checks are reused: UI, agent/provider contracts, budgets, mappings and proposal/Apply behavior are unchanged.
 
-Live acceptance has **not yet been attempted in this follow-up**. First establish a true switch through the provider-free route on the exact protected Git-source deployment; do not probe configuration with Generate or malformed planning requests. Restore a readable literal false afterward, verify a fresh paused protected deployment through the same route, and delete only this follow-up's temporary enabled deployment. No documentation push is permitted while the branch setting is true.
+The tested source was committed/pushed as **`12c123511d060611de7c209f81c3db23829daf1a`** (`Verify Preview live switch at runtime`), while the branch Config read back exact false. It changes only the server switch evaluator, its admission call site, the Preview status route, focused tests and this workflow record. No dependency, UI, model, provider contract, mapping, admission allowance, pacing policy or deadline changed.
+
+The branch-only Config was then updated through a structured JSON patch with the string value `"true"`; API readback verified that exact literal. A fresh protected Git-source Preview was created from the tested source: **[afterhours-70nxngnlj-sam-3b2d.vercel.app](https://afterhours-70nxngnlj-sam-3b2d.vercel.app)**, ID `dpl_25p7REviFWVN7stsYWNDgweATSNp`. Before any Generate action, the uncached status route returned HTTP 200 with **`{"liveEnabled":true,"sourceCommit":"12c123511d060611de7c209f81c3db23829daf1a"}`**. Anonymous access still redirected to Vercel SSO. This independently established the actual target's switch state with **0 Gemini / 0 Qloo / 0 Redis** requests; it was not described as provider readiness. A second status check in the live runner agreed before its single Generate click.
+
+### Actual native book acceptance
+
+**PASS, exactly one Generate click and one application planning POST.** Fresh browser state and the existing protected Node-only OIDC transport were used. Provider responses were not intercepted or mocked. Reviewed Example A interests (Amélie + Norah Jones), unrestricted book discovery, no chosen candidate or imported rows, 45 minutes, group size 12, INR 450 per person, 400 pages and Bengali/English/Hindi were checked in the actual submitted input. The sample/manual Guide template supplied the edited draft used to test preservation; it did not restrict the live discovery.
+
+The application returned HTTP 200, reporting **2 Gemini requests / 1 Qloo Insights request**. The trace shows native Gemini → fresh `qloo_discovery` → Gemini continuation → successful validation, with shared pacing before each model dispatch. There was no repair, standalone search/discovery probe, revision, retry or replacement. Shared admission and pacing were exercised normally; no trusted identity header or runtime flag was fabricated. Redis was not separately probed, and its exact live request count was not instrumented.
+
+Qloo returned **eight current candidates**, outside the illustrative sample shortlist. The agent selected **What I Talk About When I Talk About Running**, ID `16EA273D-E76A-4C9F-BEE5-FE013489FD26`, with returned disambiguation **2007, Haruki Murakami**. Its selected ID and cited evidence were checked against that same run's candidates and replayed through the actual proposal validator. Its actual affinity was **0.8395831843212976**; available numerical interest contributions were **0.5303264245847119** for Amélie and **0.46967357541528815** for Norah Jones. The proposal cited the current affinity and Amélie contribution IDs; saved context retained the full supplied evidence. These are provider values, **not probabilities**, narrative cultural explanations or evidence of recommendation quality.
+
+Returned order (affinity values are copied, not converted):
+
+| Book | Qloo entity ID | Affinity |
+| --- | --- | --- |
+| What I Talk About When I Talk About Running | `16EA273D-E76A-4C9F-BEE5-FE013489FD26` | 0.8395831843212976 |
+| The Unbearable Lightness of Being | `8D244758-60B8-446F-95A3-01F035EE5688` | 0.8390976546087939 |
+| Zen and the Art of Motorcycle Maintenance: An Inquiry Into Values (Phaedrus, #1) | `98A8A20F-2983-4C50-BC24-DEE6B288C374` | 0.8386678199041245 |
+| A Heartbreaking Work of Staggering Genius | `C88AE278-AC21-4B74-B449-93369FE3E734` | 0.8386463541427851 |
+| Island | `585AAB56-1D89-43AE-87FD-6D0511285844` | 0.8384962600755413 |
+| The Catcher in the Rye | `A2DEF825-7285-40C8-A39F-1E9BC86E6F6E` | 0.8377006660384334 |
+| The Miracle of Mindfulness: An Introduction to the Practice of Meditation | `6A071785-D874-4487-9F3E-94409E50C4A0` | 0.835099330185071 |
+| The Bell Jar | `61BF2BD8-CD90-418D-B155-0971B00C6702` | 0.8292325004579632 |
+
+The generated agenda was **5 + 15 + 10 + 10 + 5 = 45 minutes**: welcome/opening, paired discussion, voluntary reflection, creative responses and closing. The actual draft title and organizer notes remained unchanged through preview. Unknown price, edition pages, language and current stock stayed `needs_confirmation` with source `unknown`; no sample inventory values were attached to the discovered book. Conditional acknowledgment was required before explicit Apply. Apply populated the title, every agenda field, materials and invitation while retaining organizer notes. After editing the applied title to **AfterHours hosted edited plan**, the real Markdown download contained that current edit, retained notes, the selected book, separated saved context, conditional facts and the scores-not-probabilities label; it did not claim historical inputs. Desktop and 390px screenshots were inspected, and document/body widths both measured exactly 390px without horizontal overflow.
+
+| Observed stage | Elapsed |
+| --- | --- |
+| Loading feedback | 79 ms |
+| First shared Gemini pacing check | 15 ms |
+| First Gemini request | 5,658 ms |
+| Fresh Qloo discovery | 112 ms |
+| Continuation pacing check | 16 ms |
+| Second Gemini request | 6,373 ms |
+| Proposal validation | 4 ms |
+| Planning HTTP response | 13,137 ms |
+| Valid proposal rendered | 13,209 ms |
+
+Pacing checks total 31 ms. The difference between stage totals and response/render latency includes unseparated admission, cleanup, transport and rendering work; it is not presented as a measured Redis-admission duration. The run remained inside the unchanged 30-second overall / 20-second Gemini limits. A single successful scenario does not establish sustained performance or public reliability, validate other cultural formats, or prove better recommendations.
+
+### Restored pause and cleanup
+
+The runner restored the branch-only Config through a structured patch with the string value `"false"` in its cleanup path and independently read it back. A fresh protected Git-source replacement from the same tested SHA is **[afterhours-r1wb4s5ra-sam-3b2d.vercel.app](https://afterhours-r1wb4s5ra-sam-3b2d.vercel.app)**, ID `dpl_FSzhDGLdrjs2Kv39pcJXjo4XMRH9`, Ready / Preview. Its status route returned HTTP 200 with **`{"liveEnabled":false,"sourceCommit":"12c123511d060611de7c209f81c3db23829daf1a"}`**, with zero provider/store requests; anonymous access remained HTTP 302 to Vercel SSO. No Generate or malformed planning request was used as a configuration probe.
+
+Only temporary enabled deployment `dpl_25p7REviFWVN7stsYWNDgweATSNp` was deleted after that check. Complete before/after inventories verified it was the **only removed deployment**, with 19 deployments remaining and the paused replacement present. All older deployments were preserved. Production deployment/source, main, existing environment metadata outside the adaptive switch, model/credentials, local false switch and protection remain unchanged. The final results are a later **documentation-only follow-up**, distinct from tested source `12c1235`; it is pushed only after pause and cleanup pass.
+
+Ignored evidence: `artifacts/playwright/switch-runtime-enabled.json`, `switch-live-attempt.json`, `switch-live.log`, `switch-runtime-final-paused.json`, `switch-restored-config.json`, `switch-temporary-cleanup.json`, `switch-node-focused.log`, `switch-node-status.log`, `switch-lint.log`, `switch-typescript.log`, `switch-build.log`; actual live screenshots `switch-live-applied-desktop.png` and `switch-live-applied-mobile-390.png` in the same directory. No raw provider payload, prompt, signature, credential or authentication header is committed. Current release blockers are review/publication of the adaptive source and unverified artist/movie/place/shortlist and sustained-capacity behavior; this book acceptance did not authorize merging, Production deployment or another live request.
 
 ## Official references
 
