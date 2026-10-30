@@ -3,7 +3,11 @@ import { test, expect, candidate, discovery, configure } from "./club-fixtures";
 test("one mixed search debounces Unicode input, ignores short queries and reuses a recent page-session query", async ({ page }) => {
   let calls = 0; const queries: string[] = [];
   await page.route("**/api/club/search", async (route) => { calls++; queries.push(route.request().postDataJSON().query); await route.fulfill({ json: { ok: true, candidates: [candidate("movie").entity, candidate("artist").entity] } }); });
-  await page.goto("/"); await page.clock.install(); const input = page.getByRole("combobox", { name: "Audience interests" });
+  // Freeze time between actions so locator/transport latency cannot consume
+  // part of the 475 ms debounce before the explicit 474 ms boundary check.
+  await page.clock.install({ time: new Date("2026-10-30T00:00:00Z") });
+  await page.goto("/"); await page.clock.pauseAt(new Date("2026-10-30T00:01:00Z"));
+  const input = page.getByRole("combobox", { name: "Audience interests" });
   await input.fill("é"); await page.clock.runFor(500); expect(calls).toBe(0);
   await input.fill("映画の集い"); await page.clock.runFor(474); expect(calls).toBe(0);
   await page.clock.runFor(2); await expect(page.getByRole("option", { name: /Fixture Film/ })).toBeVisible(); expect(calls).toBe(1);
