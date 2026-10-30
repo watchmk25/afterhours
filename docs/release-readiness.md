@@ -1,6 +1,16 @@
 # Release readiness
 
+## Current gate — 30 October 2026
+
+The adaptive planner is merged on main at `771202c6ea2d95d9c796b0db72e7547d9e0c8b47` (PR #4/#5). Full Node **373/373** and anonymous controlled hosted Chromium **44/44** passed. The single public adaptive generation then failed with `504 GEMINI_DEADLINE` after **23.064 seconds**, using **2 Gemini / 1 Qloo Insights**; existing edits survived, but no valid proposal/Apply acceptance resulted. No retry ran.
+
+The accepted earlier Production deployment was restored: <https://afterhours-umber.vercel.app>, source `910ac80cf08bcfb4e288b418609e83cd841c506f`, deployment `dpl_6FSfbdxAVuuSetqPMddWYU1Bxc2a`. Main and the public demo now differ. The Production project switch is false for future builds; the active immutable rollback retains its original settings and was not given another live check. Local/Preview remain false and Preview protected. Public repository access and MIT detection were rechecked.
+
+**Remaining release gate:** adaptive public live acceptance, specifically the 20-second Gemini continuation timeout. Protected book acceptance is successful historical evidence; other formats and shortlist flows remain live unverified. Preserve the restored demo when reviewing the documentation follow-up: a main push can trigger a paused adaptive Production deployment. Submit only accurately scoped claims for the actual public version, or resolve and separately reverify the adaptive release before claiming it publicly functional. The internal 29 October target has passed; the official deadline is 31 October at 09:15 IST. [Complete outcome/rollback](adaptive-public-release.md), [submission draft](devpost-submission.md).
+
 ## Public release — 25 October 2026
+
+The following gates are historical; the current update above supersedes their deployment/switch status.
 
 **Public-release follow-up — 25 October 2026:** explicit publication is now
 authorized. PR #3 was already merged at

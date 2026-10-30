@@ -1,5 +1,7 @@
 # Public release — 25 October 2026
 
+**Historical record. Current update — 30 October 2026:** the adaptive source was merged and passed 44/44 controlled public checks, but its one anonymous live attempt failed on the Gemini continuation deadline. Production was restored to the accepted earlier book deployment at `910ac80cf08bcfb4e288b418609e83cd841c506f`, whose application code matches `06cf158…` tested below. The Production project switch is now false for future builds; the restored immutable deployment retains its original settings. See the [current release outcome](adaptive-public-release.md) and [updated submission draft](devpost-submission.md). Results and “leave enabled” instructions below describe 25 October, not a new acceptance or instruction to change today's switch.
+
 ## Authorization and source
 
 The organizer explicitly authorized public repository visibility, Production

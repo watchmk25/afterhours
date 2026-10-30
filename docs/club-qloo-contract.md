@@ -1,6 +1,6 @@
 # Adaptive club planner: Qloo boundary
 
-Implemented and checked offline on 26 October 2026. This record describes a documented HTTP contract and controlled transports, **not live verification** of the expanded flows. The previous book-workspace live evidence remains historical.
+Implemented and checked offline on 26 October 2026. This contract record's tests use controlled transports. **Dated follow-up, 30 October:** unrestricted book discovery completed one protected live proposal/Apply/download journey at `12c1235…`; a later anonymous public attempt at `771202c…` completed Qloo discovery but timed out in Gemini continuation. Artist/movie/place and shortlist live acceptance remain unverified. See the [protected workflow evidence](adaptive-club-planner.md) and [public release outcome](adaptive-public-release.md). Earlier zero-live statements below describe the initial contract work, not these separately authorized follow-ups.
 
 ## One request per operation
 
