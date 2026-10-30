@@ -1,6 +1,16 @@
 # Release readiness
 
+## Current gate — 30 October 2026
+
+**PASS for the demonstrated public book scenario.** The adaptive continuation patch merged through PR #7 at **`385d7ec75990421909af12dc7e782837f66bcaba`**, with application files matching tested `65ba642…`. The new complete anonymous controlled hosted suite passed **44/44 in 98.551 seconds**, zero live provider/store calls. Reused unchanged checks: **380 Node / 51 focused tests**, lint, TypeScript, production build, 44 local and 44 protected controlled Chromium checks.
+
+The one fresh anonymous live generation then passed: **2 Gemini / 1 Qloo Insights**, eight current candidates, selected-book/evidence membership, exact **45-minute** agenda, preserved edits, explicit Apply and download of a subsequent edit. Valid render: **5.693 seconds**. Production stays enabled at <https://afterhours-umber.vercel.app>; local/Preview remain paused and Preview protected. Public repository access and MIT detection were rechecked. The accepted earlier deployment `dpl_6FSfbdxAVuuSetqPMddWYU1Bxc2a`, source `910ac80…`, remains Ready/preserved as rollback. Documentation-only deployment SHA is distinguished from the live-tested application source in the final handoff.
+
+**Remaining submission work:** entrant profile/eligibility/rights review, current screenshots/optional video and final Devpost submission by **31 October, 09:15 IST**. The internal 29 October target has passed. Artist/movie/place and shortlist live acceptance, provider capacity and sustained reliability remain unverified. The new continuation finished below the old cap, so the earlier latency cause remains unknown. [Current release](adaptive-continuation-release.md), [submission-ready draft](devpost-submission.md), [earlier failure/rollback history](adaptive-public-release.md). The task's one live allowance is spent; documentation deployment checks make no further generation.
+
 ## Public release — 25 October 2026
+
+The following gates are historical; the current update above supersedes their deployment/switch status.
 
 **Public-release follow-up — 25 October 2026:** explicit publication is now
 authorized. PR #3 was already merged at

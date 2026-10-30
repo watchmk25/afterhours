@@ -1,5 +1,7 @@
 # Public release — 25 October 2026
 
+**Historical record. Current update — 30 October 2026:** the adaptive continuation patch now passed a fresh anonymous public book proposal/Apply/edited-download journey at `385d7ec…`: **2 Gemini / 1 Qloo**, exact 45 minutes, rendered in **5.693 seconds**. Production serves the adaptive app enabled for judges; `910ac80…` remains preserved rollback. See the [current release](adaptive-continuation-release.md) and [submission draft](devpost-submission.md). Results below describe 25 October; they are not new verification of the adaptive app. The earlier failed adaptive attempt is retained [separately](adaptive-public-release.md).
+
 ## Authorization and source
 
 The organizer explicitly authorized public repository visibility, Production
