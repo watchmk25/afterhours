@@ -1,4 +1,6 @@
-# Adaptive public release attempt — 30 October 2026
+# Earlier adaptive public release attempt — 30 October 2026
+
+**Historical failure record.** A later, separately authorized release of the bounded continuation fix passed anonymous public acceptance at `385d7ec75990421909af12dc7e782837f66bcaba`, using 2 Gemini / 1 Qloo and rendering in 5.693 seconds. Production now serves the adaptive application enabled for judges; the fallback below is retained for rollback. See the [current release](adaptive-continuation-release.md) and [current submission draft](devpost-submission.md). Deployment/switch instructions and blockers below describe this earlier failed attempt, not the final state. Its 20-second timeout remains evidence; the underlying latency cause is still unknown.
 
 **Outcome: controlled release checks passed; the single anonymous adaptive live acceptance failed. The earlier accepted public deployment was restored.** No retry, replacement attempt, model change, budget increase or automatic fallback was used.
 

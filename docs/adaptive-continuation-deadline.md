@@ -1,5 +1,7 @@
 # Adaptive continuation deadline — 30 October 2026
 
+**Scope of this historical record:** the implementation and protected acceptance task below did not authorize Production changes. A subsequent task separately released the same application through PR #7 at `385d7ec…`; anonymous public acceptance passed in 5.693 seconds with 2 Gemini / 1 Qloo, and Production remains enabled. See the [current release](adaptive-continuation-release.md). The source/policy/tests and protected results below are preserved; their “no release” boundary describes that earlier allowance.
+
 This focused fix branches from main `771202c6ea2d95d9c796b0db72e7547d9e0c8b47`. It does not merge [release-outcome PR #6](https://github.com/watchmk25/afterhours/pull/6), change Production or replace the restored accepted demo. The earlier public failure reached fresh Qloo discovery, then hit the continuation's 20-second request cap at 23.064 seconds total. The underlying provider latency cause remains unknown; changing the budget does not diagnose it.
 
 ## Exact policy and deadline trace
