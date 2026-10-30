@@ -9,6 +9,9 @@ async function scenario(mode: string) {
     import assert from 'node:assert/strict'; import {registerHooks} from 'node:module';
     registerHooks({resolve(s,c,n){return s==='server-only'?{url:'data:text/javascript,export{}',shortCircuit:true}:n(s,c)}});
     const mode=${JSON.stringify(mode)}; let stores=[],qloo=0,gemini=0,pacing=0,controller; const secret='synthetic-private-secret';
+    if(mode==='extended-continuation'){
+      const {mock}=await import('node:test');mock.timers.enable({apis:['Date','setTimeout'],now:1000000});mock.method(performance,'now',()=>Date.now());
+    }
     console.error=()=>{}; console.info=()=>{};
     globalThis.fetch=async(input,init)=>{
       const request=new Request(input,init),url=new URL(request.url);
@@ -17,17 +20,22 @@ async function scenario(mode: string) {
         if(mode==='store-failure')throw Error(secret);
         if(release)return Response.json({result:1});
         if(pace){pacing++;return Response.json({result:mode==='pacing-continuation'&&pacing===2?[0,17]:[1]});}
+        if(mode==='extended-continuation')await import('node:test').then(({mock})=>mock.timers.tick(500));
         if(mode==='limited')return Response.json({result:[0,'visitor',61]});
         return Response.json({result:[1]});
       }
       if(url.origin==='https://hackathon.api.qloo.com'){
         qloo++;
-        if(mode==='pacing-continuation')return Response.json({results:{entities:[{entity_id:'DF4272D0-A6BA-445B-88DC-172A56B5D183',name:'The Guide',types:['urn:entity:book'],query:{affinity:0.6}}]}});
+        if(mode==='pacing-continuation'||mode==='extended-continuation')return Response.json({results:{entities:[{entity_id:'DF4272D0-A6BA-445B-88DC-172A56B5D183',name:'The Guide',types:['urn:entity:book'],query:{affinity:0.6}}]}});
         return Response.json({error:secret},{status:503});
       }
       if(url.origin==='https://generativelanguage.googleapis.com'){
         gemini++;
-        if(mode==='pacing-continuation')return Response.json({id:'controlled-call',status:'requires_action',steps:[{type:'function_call',id:'call-1',name:'discover_cultural_focus',arguments:{}}]});
+        if(mode==='extended-continuation'){
+          const {mock}=await import('node:test');mock.timers.tick(gemini===1?2500:21000);
+          if(gemini>1){const text=JSON.stringify({status:'proposal',proposal:{selectedEntityId:'DF4272D0-A6BA-445B-88DC-172A56B5D183',eventTitle:'Shared reflections',formatDescription:'Offer paired conversation.',evidenceRefs:['affinity:DF4272D0-A6BA-445B-88DC-172A56B5D183'],agenda:[{title:'Conversation',minutes:45,activity:'Invite open discussion.'}],materials:['Paper'],invitation:'Join a shared conversation.'}});return Response.json({id:'controlled-final',status:'completed',steps:[{type:'model_output',content:[{type:'text',text}]}]});}
+        }
+        if(mode==='pacing-continuation'||mode==='extended-continuation')return Response.json({id:'controlled-call',status:'requires_action',steps:[{type:'function_call',id:'call-1',name:'discover_cultural_focus',arguments:{}}]});
         if(mode==='cancel'){
           const pending=new Promise((_r,reject)=>request.signal.addEventListener('abort',()=>reject(Error(secret)),{once:true}));queueMicrotask(()=>controller.abort());return pending;
         }
@@ -38,7 +46,7 @@ async function scenario(mode: string) {
     const {handleClubRequest}=await import(${JSON.stringify(path)});
     const input={club:'An independent student collective',goal:'Discuss a book together',duration:45,groupSize:12,location:'',budget:null,maxPages:null,languages:[],format:'book',source:'discovery',interests:[{preset:'a',index:0}],resources:[],selected:null,mode:'generate'};
     const outcomes=[];
-    for(const operation of mode==='pacing-continuation'||mode==='cancel'?['plan']:['search','discover','plan']){
+    for(const operation of ['pacing-continuation','cancel','extended-continuation'].includes(mode)?['plan']:['search','discover','plan']){
       stores=[];qloo=0;gemini=0;pacing=0;controller=new AbortController();
       const value=mode==='invalid'?{}:operation==='search'?{query:'Guide'}:input;
       const request=new Request('https://afterhours.example/api/club/'+operation,{method:'POST',headers:{'content-type':'application/json',origin:'https://afterhours.example','x-vercel-forwarded-for':'192.0.2.8'},body:JSON.stringify(value),signal:controller.signal});
@@ -74,4 +82,12 @@ test("new native continuation pacing denial accounts earlier calls and releases 
 test("new plan request cancellation releases the lease and does not dispatch Qloo", async () => {
   const [result] = await scenario("cancel"); assert.equal(result.status, 499); assert.equal(result.qloo, 0); assert.equal(result.gemini, 1);
   assert.equal(result.stores.filter((entry) => entry.release).length, 1);
+});
+
+test("adaptive route explicitly enables the extended continuation after admission and releases its lease", async () => {
+  const [result] = await scenario("extended-continuation");
+  assert.equal(result.status, 200); assert.equal(result.gemini, 2); assert.equal(result.qloo, 1);
+  assert.deepEqual(result.usage, { geminiRequests: 2, qlooRequests: 1 });
+  assert.equal(result.stores.filter((entry) => entry.release).length, 1);
+  assert.equal(result.stores.filter((entry) => entry.pace).length, 2);
 });

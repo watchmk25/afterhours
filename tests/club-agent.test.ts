@@ -102,7 +102,8 @@ test("all four formats execute two native model turns and one fresh discovery wi
     assert.equal(f.geminiCalls[0].turn.generation_config?.tool_choice, "auto");
     assert.equal(f.geminiCalls[0].turn.generation_config?.thinking_level, "minimal");
     assert.equal(f.geminiCalls[1].turn.generation_config?.tool_choice, "none");
-    assert(f.geminiCalls.every((call) => call.remaining !== undefined && call.remaining <= 20_000));
+    assert(f.geminiCalls[0].remaining !== undefined && f.geminiCalls[0].remaining <= 20_000);
+    assert(f.geminiCalls[1].remaining !== undefined && f.geminiCalls[1].remaining <= 28_000);
     assert(!JSON.stringify(result.body).includes(hidden)); assert(!JSON.stringify(result.body).includes("opaque-native-signature"));
   }
 });
@@ -161,12 +162,15 @@ test("cancellation before dispatch and during in-flight work reject late respons
   const result = await run; assert(!result.body.ok && result.body.error.code === "RUN_CANCELLED"); resolve(native()); await new Promise((done) => setImmediate(done)); assert.equal(pending.qlooCalls.length, 0);
 });
 
-test("overall deadline bounds non-cooperative work and leaves no continuation after cancellation", async () => {
-  const f = fixture([native()], { overallTimeoutMs: 15, discover: async (_input, signal) => {
-    assert(signal); await new Promise((done) => setTimeout(done, 25)); return { status: 200, body: { ok: true, discovery: discovery() } };
+test("overall deadline bounds non-cooperative work and leaves no continuation after cancellation", async (t) => {
+  t.mock.timers.enable({ apis: ["Date", "setTimeout"] });
+  t.mock.method(performance, "now", () => Date.now());
+  const f = fixture([native()], { overallTimeoutMs: 3000, discover: async (_input, signal) => {
+    assert(signal); await new Promise((done) => setTimeout(done, 4000)); return { status: 200, body: { ok: true, discovery: discovery() } };
   } });
-  const result = await f.agent.run(input()); assert(!result.body.ok && result.body.error.code === "RUN_TIMEOUT"); assert.equal(f.geminiCalls.length, 1);
-  await new Promise((done) => setTimeout(done, 30)); assert.equal(f.geminiCalls.length, 1);
+  const pending = f.agent.run(input()); await new Promise((done) => setImmediate(done)); t.mock.timers.tick(3000);
+  const result = await pending; assert(!result.body.ok && result.body.error.code === "RUN_TIMEOUT"); assert.equal(f.geminiCalls.length, 1);
+  t.mock.timers.tick(1000); await new Promise((done) => setImmediate(done)); assert.equal(f.geminiCalls.length, 1);
 });
 
 test("provider failures expose only sanitized error and configured request counts", async () => {
